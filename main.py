@@ -1,19 +1,24 @@
-import torch
+import time
+
+from configs.config_loader import load_yaml_config
+from trainer.trainer import Trainer
+
+
+
+configs = [
+    "configs/sac/cartpole.yaml"
+]
+
+
 
 def main():
-    print(f"PyTorch version: {torch.__version__}")
-    gpu = torch.cuda.is_available()
-    print(f"CUDA available: {gpu}")
-
-    if gpu:
-        dev = torch.cuda.get_device_name(0)
-        print(f"Device: {dev}")
-        x = torch.randn(8192, 8192, device="cuda")
-        y = torch.randn(8192, 8192, device="cuda")
-        z = (x @ y).mean()
-        print(f"Compute ok: {z.item()}")
-    else:
-        print("No CUDA device detected.")
+    for config in configs:
+        start_time = time.time()
+        print(f"---------------------------\nTraining on Config: {config}\n---------------------------\n")
+        cfg = load_yaml_config(config)
+        trainer = Trainer(cfg)
+        trainer.train()
+        print(f"Training complete. Took {(time.time() - start_time)/1e9}s.\n\n")
 
 if __name__ == "__main__":
     main()

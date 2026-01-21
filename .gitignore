@@ -1,3 +1,5 @@
-# envs / etc.
+sandbox/
+
+# venvs / setup
 .venv/
 .python-version
