@@ -19,7 +19,7 @@ class MLP(nn.Module):
         activations = cfg.network_args.get("activations", [])
         bias = cfg.network_args.get("bias", True)
 
-        layer_shapes = [math.prod(obs_space.shape)] + hidden_dims + [math.prod(act_space.shape)]
+        layer_shapes = [math.prod(obs_space.shape)] + hidden_dims + [act_space.n]
 
         # Setting up our various layers
         layers = []

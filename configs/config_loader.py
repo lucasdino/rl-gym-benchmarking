@@ -27,13 +27,16 @@ def load_yaml_config(path: str) -> TrainConfig:
     algo_cfg = AlgoConfig(
         name=str(raw_algo["name"]),
         gamma=float(raw_algo["gamma"]),
-        lr=float(raw_algo["lr"]),
+        lr_start=float(raw_algo["lr_start"]),
+        lr_end=float(raw_algo["lr_end"]),
+        lr_warmup_env_steps=int(raw_algo["lr_warmup_env_steps"]),
+        update_every_steps=int(raw_algo["update_every_steps"]),
         batch_size=int(raw_algo["batch_size"]),
         seed=int(raw_algo["seed"]),
         extra={
             k: v
             for k, v in raw_algo.items()
-            if k not in {"name", "gamma", "lr", "seed", "batch_size"}
+            if k not in {"name", "gamma", "lr", "lr_start", "lr_end", "lr_warmup_env_steps", "seed", "batch_size"}
         } or {},
     )
 
@@ -50,15 +53,22 @@ def load_yaml_config(path: str) -> TrainConfig:
 
     # Train params
     raw_tp: Dict[str, Any] = raw["train"]
+    raw_logging_method = raw_tp.get("logging_method", ["console"])
     train_params = TrainParams(
         total_env_steps=int(raw_tp["total_env_steps"]),
         eval_interval=int(raw_tp["eval_interval"]),
+        log_interval=int(raw_tp["log_interval"]),
+        logging_method=[str(m) for m in raw_logging_method],
+        console_log_train=bool(raw_tp.get("console_log_train", True)),
         wandb_project=str(raw_tp["wandb_project"]),
         wandb_group=None if raw_tp.get("wandb_group") is None else str(raw_tp.get("wandb_group")),
+        wandb_run=None if raw_tp.get("wandb_run") is None else str(raw_tp.get("wandb_run")),
+        save_video_last_eval=bool(raw_tp.get("save_video_last_eval", True)),
+        video_save_dir=str(raw_tp.get("video_save_dir", "saved_data/saved_videos")),
         extra={
             k: v
             for k, v in raw_tp.items()
-            if k not in {"total_env_steps", "eval_interval", "wandb_project", "wandb_group"}
+            if k not in {"total_env_steps", "eval_interval", "log_interval", "logging_method", "console_log_train", "wandb_project", "wandb_group", "wandb_run", "save_video_last_eval", "video_save_dir"}
         } or None,
     )
 

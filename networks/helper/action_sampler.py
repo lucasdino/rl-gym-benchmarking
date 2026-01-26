@@ -23,6 +23,9 @@ class ActionSampler():
             self.num_samples += batched_action_output.info['action_values'].shape[0]
         return self.sampler(batched_action_output)
 
+    def get_epsilon(self):
+        return self._epsilon_scheduler()
+
     # =====================================
     # Defining Specific Samplers Below
     # =====================================

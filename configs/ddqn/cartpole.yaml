@@ -1,25 +1,28 @@
 env:
   name: CartPole-v1
   num_envs: 16
-  max_episode_steps: 1000
+  max_episode_steps: 300
 
 
 algo:
   name: ddqn
   gamma: 0.99
-  lr: 3e-4
+  lr_start: 5e-4
+  lr_end:   3e-5
+  lr_warmup_env_steps: 1000
   batch_size: 64
+  update_every_steps: 1
   seed: 42
   buffer_size: 5000
   warmup_buffer_size: 1000
-  overwrite_target_net_grad_updates: 100   # In terms of 'number grad updates', not samples seen 
+  overwrite_target_net_grad_updates: 64   # In terms of 'number grad updates', not samples seen 
 
 
 sampler:
   name: epsilon_greedy
-  starting_epsilon: 0.1
-  ending_epsilon: 0.01
-  warmup_steps: 1000 
+  starting_epsilon: 1.0
+  ending_epsilon: 0.05
+  warmup_steps: 1000
 
 
 networks:
@@ -27,20 +30,25 @@ networks:
     network_type: mlp
     network_args:
       hidden_dims: [64, 64]
-      activations: [relu, relu, relu]
-      bias: False
+      activations: [tanh, tanh, tanh]
+      bias: True
 
   q_2:
     network_type: mlp
     network_args:
       hidden_dims: [64, 64]
-      activations: [relu, relu, relu]
-      bias: False
+      activations: [tanh, tanh, tanh]
+      bias: True
 
 
 train:
-  total_env_steps: 50000
-  eval_interval: 5000
+  total_env_steps: 100000
+  log_interval: 10000
+  eval_interval: 10000
   eval_envs: 128
+  logging_method: [console]
+  console_log_train: True
   wandb_project: rl-benchmarking
   wandb_group: cartpole-v1_ddqn
+  wandb_run: cartpole-v1_ddqn_run1
+  save_video_last_eval: True

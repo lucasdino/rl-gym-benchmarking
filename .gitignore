@@ -1,7 +1,10 @@
+# Local folders
 sandbox/
+saved_data/
 
 # venvs / setup
 .venv/
 .python-version
 
+# Misc. local compilation
 __pycache__/

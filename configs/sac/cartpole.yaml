@@ -63,3 +63,5 @@ train:
   eval_interval: 5000
   wandb_project: rl-benchmarking
   wandb_group: cartpole-v1_sac
+  wandb_run: cartpole-v1_sac_run1
+  save_video_last_eval: True

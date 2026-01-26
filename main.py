@@ -6,7 +6,7 @@ from trainer.trainer import Trainer
 
 
 configs = [
-    "configs/ddqn/cartpole.yaml"
+    "configs/ddqn/cartpole.yaml",
 ]
 
 
@@ -18,7 +18,7 @@ def main():
         cfg = load_yaml_config(config)
         trainer = Trainer(cfg)
         trainer.train()
-        print(f"Training complete. Took {(time.time() - start_time)}s.\n\n")
+        print(f"Training complete. Took {(time.time() - start_time):.1f}s.\n\n")
 
 if __name__ == "__main__":
     main()

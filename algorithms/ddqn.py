@@ -5,11 +5,12 @@ import torch.nn.functional as F
 from typing import Any
 
 from networks.build_network import build_network
-from networks.helper.action_sampler import ActionSampler
+from networks.helper import ActionSampler, build_cosine_warmup_schedulers
 from algorithms.base import BaseAlgorithm
 from dataclass.replay_buffer import ReplayBuffer
 from dataclass.primitives import BatchedActionOutput, BatchedTransition
 from configs.config import TrainConfig
+from trainer.helper import RunResults
 
 
 class DDQN(BaseAlgorithm):
@@ -27,6 +28,7 @@ class DDQN(BaseAlgorithm):
         self.sampler = ActionSampler(self.cfg.sampler)
         self._instantiate_networks()
         self._instantiate_optimizer()
+        self._instantiate_lr_schedulers()
         self.step_info = {
             "update_num": 0,
             "rollout_steps": 0 
@@ -52,8 +54,18 @@ class DDQN(BaseAlgorithm):
 
     def _instantiate_optimizer(self):
         self.optimizers = {
-            name: optim.Adam(model.parameters(), lr=self.cfg.algo.lr) for name, model in self.networks.items()
+            name: optim.Adam(model.parameters(), lr=self.cfg.algo.lr_start) for name, model in self.networks.items()
         }
+
+    def _instantiate_lr_schedulers(self):
+        self.lr_schedulers = build_cosine_warmup_schedulers(
+            self.optimizers,
+            total_env_steps=self.cfg.train.total_env_steps,
+            warmup_env_steps=self.cfg.algo.lr_warmup_env_steps,
+            start_lr=self.cfg.algo.lr_start,
+            end_lr=self.cfg.algo.lr_end,
+            warmup_start_lr=0.0,
+        )
 
 
     # =========================================
@@ -76,14 +88,13 @@ class DDQN(BaseAlgorithm):
         if eval_mode:
             actions = action_values.argmax(dim=1, keepdim=True)
         else:
-            self.step_info['rollout_steps'] += action_values.shape[0]
             placeholder_action = torch.zeros((action_values.shape[0], 1), device=action_values.device, dtype=torch.long)
             sampled = self.sampler.sample(BatchedActionOutput(placeholder_action, {"action_values": action_values}))
             actions = sampled.action
         
         return BatchedActionOutput(actions, {"action_values": action_values})
         
-    def observe(self, transition: BatchedTransition) -> None:
+    def observe(self, transition: BatchedTransition) -> list[RunResults]:
         """ Given a transition, store information in our replay buffer.
 
         Inputs:
@@ -94,20 +105,20 @@ class DDQN(BaseAlgorithm):
         avg_reward = torch.mean(transition.reward).item()
         avg_action_value = torch.mean(transition.act.info['action_values']).item()
         avg_max_action_value = torch.mean(transition.act.info['action_values'].max(dim=1).values).item()
-        avg_selected_action_value = torch.mean(
-            transition.act.info['action_values'].gather(1, transition.act.action.long())
-        ).item()
+        avg_selected_action_value = torch.mean(transition.act.info['action_values'].gather(1, transition.act.action.long())).item()
 
-        observed_results = {
-            "Avg. Reward": avg_reward,
-            "Avg. Action Value": avg_action_value,
-            "Avg. Max Action Value": avg_max_action_value,
-            "Avg. Selected Action Value": avg_selected_action_value
-        }
+        observed_results = [
+            RunResults("Avg. Reward", avg_reward, "mean"),
+            RunResults("Avg. Action Value", avg_action_value, "mean"),
+            RunResults("Avg. Max Action Value", avg_max_action_value, "mean"),
+            RunResults("Avg. Selected Action Value", avg_selected_action_value, "mean"),
+            RunResults("Avg. Epsilon", self.sampler.get_epsilon(), "mean")
+        ]
 
         return observed_results
 
-    def update(self) -> dict[str, Any]:
+    def update(self) -> list[RunResults]:
+        self.networks['q_1'].train()
         if self.step_info["update_num"] % self.cfg.algo.extra["overwrite_target_net_grad_updates"] == 0:
             self._copy_q1_to_q2()
 
@@ -138,11 +149,14 @@ class DDQN(BaseAlgorithm):
         loss = F.mse_loss(q_taken, target_values)
         loss.backward()
         _ = [optimizer.step() for optimizer in self.optimizers.values()]
+        current_env_steps = int(self.step_info["rollout_steps"])
+        _ = [scheduler.step(current_env_steps) for scheduler in self.lr_schedulers.values()]
+        current_lr = self.lr_schedulers["q_1"].get_last_lr()
 
-        # Key Values to Log
-        update_results = {
-            "Avg. Loss": loss.mean().item()   # not really useful here since we overwrite our target_net every so often. But log anyway
-        }
+        update_results = [
+            RunResults("Avg. Loss", loss.mean().item(), "mean"),
+            RunResults("Learning Rate", current_lr, "mean"),
+        ]
 
         return update_results
 
