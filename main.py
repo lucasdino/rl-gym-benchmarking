@@ -12,9 +12,12 @@ from trainer.helper.plot_server import LIVE_PLOTS_DIR, CFG_GREEN, COLOR_RESET
 
 
 configs = [
+    "configs/discrete_actions/ddqn/per_ablation",
+    "configs/discrete_actions/ddqn/n_step_ablation",
+    "configs/discrete_actions/ddqn/noisynet_ablation",
     # "configs/discrete_actions/ddqn/breakout.yaml",
     # "configs/discrete_actions/ddqn/lunarlander.yaml",
-    "configs/discrete_actions/ddqn/cartpole.yaml",
+    # "configs/discrete_actions/ddqn/cartpole.yaml",
 ]
 
 START_PLOT_SERVER = True
@@ -47,7 +50,10 @@ def main():
     if START_PLOT_SERVER:
         start_plot_server(open_browser=True)
     
-    for config in configs:
+    expanded_configs = []
+    for c in configs:
+        expanded_configs.extend([os.path.join(c, f) for f in os.listdir(c) if f.endswith(".yaml")]) if os.path.isdir(c) else expanded_configs.append(c)
+    for config in expanded_configs:
         start_time = time.time()
         cfg = load_yaml_config(config)
 
@@ -57,7 +63,7 @@ def main():
             wandb.login(key=os.environ["WANDB_API_KEY"])
 
         if cfg.inference.inference_only:
-            print(f"{CFG_GREEN}{'='*70}\n# Evaluating on Config: {config:<44} #\n{'='*70}{COLOR_RESET}\n")
+            print(f"{CFG_GREEN}{'='*120}\n# Evaluating on Config: {config:<94} #\n{'='*120}{COLOR_RESET}\n")
             trainer = Trainer(cfg)
             override_cfg = cfg if cfg.inference.override_cfg else None
             trainer.algo = trainer.algo.load(path = cfg.inference.algo_path, override_cfg = override_cfg)
@@ -70,7 +76,7 @@ def main():
             seeds = generate_seeds(cfg.algo.seed, num_seeds)
             run_name = cfg.train.run_name if cfg.train.run_name else f"{cfg.env.name}_{cfg.algo.name}"
             
-            print(f"{CFG_GREEN}{'='*70}\n# Training on Config: {config:<46} #\n# Seeds: {seeds} #\n{'='*70}{COLOR_RESET}\n")
+            print(f"{CFG_GREEN}{'='*120}\n# Training on Config: {config:<96} #\n# Seeds: {seeds} #\n{'='*120}{COLOR_RESET}\n")
             
             for seed_idx, seed in enumerate(seeds):
                 print(f"\n--- Seed {seed_idx + 1}/{num_seeds} (seed={seed}) ---\n")

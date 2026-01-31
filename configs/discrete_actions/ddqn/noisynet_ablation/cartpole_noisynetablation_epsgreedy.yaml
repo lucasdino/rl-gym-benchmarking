@@ -1,0 +1,73 @@
+env:
+  name: CartPole-v1
+  num_envs: 16
+  max_episode_steps: 500    # 20 seconds max (30 fps)
+
+
+algo:
+  name: ddqn
+  gamma: 0.95
+  lr_start: 4e-4     # ddqn paper (pg. 9) uses constant lr=0.00025
+  lr_end:   2e-4
+  lr_warmup_env_steps: 20000
+  batch_size: 32       # ddqn paper (pg. 9) uses B=32
+  n_step: 4            # n-step TD learning (1 = standard TD)
+  update_every_steps: 1
+  use_action_for_steps_train: 1
+  use_action_for_steps_eval: 1
+  seed: 21               # Comment out (Default to None) if you want random seeding
+  buffer_size: 200000    # ddqn paper (pg. 9) uses 1M for this but train on atari (200M frames)
+  buffer_type: priority_experience_replay
+  warmup_buffer_size: 5000
+  overwrite_target_net_grad_updates: 256   # In terms of 'number grad updates', not samples seen. Num steps would be this * num_envs * update_every_steps
+
+
+sampler:
+  name: epsilon_greedy
+  starting_epsilon: 1.0
+  ending_epsilon: 0.1
+  warmup_steps: 0
+  decay_until_step: 250000
+
+
+networks:
+  q_1:
+    network_type: mlp
+    network_args:
+      mlp_dims: ["InDims", 32, 32, "OutDims"]
+      mlp_activations: [relu, relu, identity]
+      mlp_bias: True
+      mlp_layer_type: [Linear, Linear, Linear]
+      mlp_layer_extra_args: [{}, {}, {}]
+
+  q_2:
+    network_type: mlp
+    network_args:
+      mlp_dims: ["InDims", 32, 32, "OutDims"]
+      mlp_activations: [relu, relu, identity]
+      mlp_bias: True
+      mlp_layer_type: [Linear, Linear, Linear]
+      mlp_layer_extra_args: [{}, {}, {}]
+
+
+train:
+  total_env_steps: 400000
+  log_interval: 20000
+  eval_interval: 20000
+  eval_envs: 64
+  # threshold_exit_training_on_eval_score: 500
+  logging_method: [console]
+  console_log_train: True
+  # wandb_project: set this in config.py
+  wandb_group: cartpole_ddqn
+  run_name: cartpole_ddqn_noisynetablation_epsilongreedy
+  num_seeds: 5
+  save_result: True
+  save_video_at_end: False
+  save_algo_at_end: False
+
+
+inference:
+  inference_only: False
+  override_cfg: False     # If true, override the cfg with what is in this
+  algo_path: saved_data/saved_algos/ddqn/cartpole-v1_ddqn_run1_20260127_160158.pkl
