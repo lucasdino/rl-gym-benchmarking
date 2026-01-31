@@ -15,6 +15,7 @@ algo:
   lr_end:   2.5e-4
   lr_warmup_env_steps: 5000
   batch_size: 32       # ddqn paper (pg. 9) uses B=32
+  n_step: 1            # n-step TD learning (1 = standard TD)
   update_every_steps: 1
   use_action_for_steps_train: 1
   use_action_for_steps_eval: 1
@@ -74,9 +75,11 @@ train:
   console_log_train: True
   save_video_at_end: True
   save_algo_at_end: True
-  wandb_project: rl-benchmarking
+  # wandb_project: set this in config.py
   wandb_group: breakout_ddqn
-  wandb_run: breakout_ddqn_run1
+  run_name: breakout_ddqn_exp1
+  num_seeds: 1
+  save_result: False
 
 
 inference:

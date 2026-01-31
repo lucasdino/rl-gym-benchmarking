@@ -94,6 +94,7 @@ def record_vec_grid_video(
     actions_to_env must convert action tensor -> numpy actions suitable for env.step
     """
     rows, cols = grid_hw
+    num_envs = env_cfg.num_envs
     if rows * cols != env_cfg.num_envs:
         raise ValueError(f"grid_hw={grid_hw} implies {rows*cols} tiles but num_envs={env_cfg.num_envs}")
 

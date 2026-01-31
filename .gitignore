@@ -1,3 +1,5 @@
+.env
+
 # Local folders
 sandbox/
 saved_data/
@@ -8,3 +10,4 @@ saved_data/
 
 # Misc. local compilation
 __pycache__/
+wandb/

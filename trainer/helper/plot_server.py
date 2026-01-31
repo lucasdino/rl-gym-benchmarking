@@ -19,6 +19,9 @@ MANIFEST_PATH = os.path.join(LIVE_PLOTS_DIR, "manifest.json")
 INDEX_PATH = os.path.join(LIVE_PLOTS_DIR, "index.html")
 DEFAULT_PORT = 8765
 
+CFG_GREEN = "\033[92m"
+COLOR_RESET = "\033[0m"
+
 
 class PlotRequestHandler(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -47,7 +50,7 @@ def start_plot_server(port: int = DEFAULT_PORT, open_browser: bool = True) -> st
         url = f"http://127.0.0.1:{port}/index.html"
         if open_browser:
             webbrowser.open(url)
-        print(f"[PlotServer] Started at {url}")
+        print(f"{CFG_GREEN}[PlotServer] Started at {url}{COLOR_RESET}")
         return url
 
 
@@ -59,22 +62,35 @@ def _ensure_manifest_exists():
         json.dump({"plots": {}}, f)
 
 
-def update_manifest(plots: dict[str, list[str]]):
+def update_manifest(plots: dict[str, list[str]], persistent_categories: set[str] | None = None):
     """
     Update the manifest with new plots.
     plots: dict mapping category -> list of relative filepaths (from live_plots dir)
+    persistent_categories: set of category names that are persistent (multi-seed)
     return
     """
     os.makedirs(LIVE_PLOTS_DIR, exist_ok=True)
     existing: dict[str, list[str]] = {}
+    existing_persistent: list[str] = []
     if os.path.exists(MANIFEST_PATH):
         with open(MANIFEST_PATH, "r") as f:
             data = json.load(f)
             existing = data.get("plots", {})
+            existing_persistent = data.get("persistent_categories", [])
 
     existing.update(plots)
+    
+    if persistent_categories:
+        for cat in persistent_categories:
+            if cat not in existing_persistent:
+                existing_persistent.append(cat)
+    
     with open(MANIFEST_PATH, "w") as f:
-        json.dump({"plots": existing, "timestamp": _get_timestamp()}, f, indent=2)
+        json.dump({
+            "plots": existing,
+            "persistent_categories": existing_persistent,
+            "timestamp": _get_timestamp()
+        }, f, indent=2)
 
 
 def _get_timestamp() -> str:

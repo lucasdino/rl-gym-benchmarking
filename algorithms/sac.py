@@ -74,13 +74,14 @@ class SoftActorCritic(BaseAlgorithm):
         # Move to CPU and send back
 
         
-    def observe(self, transition: BatchedTransition) -> None:
+    def observe(self, transition: BatchedTransition) -> list:
         """ Given a transition, store information in our replay buffer.
 
         Inputs:
         - transition: For each element in transition, it should be of shape 'B x C' where 'C' can be any arbtirary shape (so long as that's what we're working with in our networks)
         """
         self.replay_buffer.add(transition)
+        return []
 
     def update(self) -> dict[str, Any]:
         obs, actions, rewards, next_obs, terminated, truncated, act_info, info = self.replay_buffer.sample(self.cfg.algo.batch_size, self.device)

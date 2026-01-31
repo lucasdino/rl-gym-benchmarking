@@ -46,11 +46,12 @@ def load_yaml_config(path: str) -> TrainConfig:
         use_action_for_steps_train=int(raw_algo.get("use_action_for_steps_train", 1)),
         use_action_for_steps_eval=int(raw_algo.get("use_action_for_steps_eval", 1)),
         batch_size=int(raw_algo["batch_size"]),
+        n_step=int(raw_algo.get("n_step", 1)),
         seed=int(raw_algo["seed"]),
         extra={
             k: v
             for k, v in raw_algo.items()
-            if k not in {"name", "gamma", "lr", "lr_start", "lr_end", "lr_warmup_env_steps", "seed", "batch_size", "use_action_for_steps_train", "use_action_for_steps_eval"}
+            if k not in {"name", "gamma", "lr", "lr_start", "lr_end", "lr_warmup_env_steps", "seed", "batch_size", "use_action_for_steps_train", "use_action_for_steps_eval", "n_step"}
         } or {},
     )
 
@@ -70,13 +71,16 @@ def load_yaml_config(path: str) -> TrainConfig:
     raw_logging_method = raw_tp.get("logging_method", ["console"])
     train_params = TrainParams(
         total_env_steps=int(raw_tp["total_env_steps"]),
+        eval_envs=int(raw_tp["eval_envs"]),
         eval_interval=int(raw_tp["eval_interval"]),
         log_interval=int(raw_tp["log_interval"]),
         logging_method=[str(m) for m in raw_logging_method],
         console_log_train=bool(raw_tp.get("console_log_train", True)),
-        wandb_project=str(raw_tp["wandb_project"]),
+        wandb_project=str(raw_tp.get("wandb_project", TrainParams.wandb_project)),
         wandb_group=None if raw_tp.get("wandb_group") is None else str(raw_tp.get("wandb_group")),
-        wandb_run=None if raw_tp.get("wandb_run") is None else str(raw_tp.get("wandb_run")),
+        run_name=None if raw_tp.get("run_name") is None else str(raw_tp.get("run_name")),
+        num_seeds=int(raw_tp.get("num_seeds", 1)),
+        save_result=bool(raw_tp.get("save_result", False)),
         save_video_at_end=bool(raw_tp.get("save_video_at_end", True)),
         save_algo_at_end=bool(raw_tp.get("save_algo_at_end", True)),
         video_save_dir=str(raw_tp.get("video_save_dir", "saved_data/saved_videos")),
@@ -85,7 +89,7 @@ def load_yaml_config(path: str) -> TrainConfig:
         extra={
             k: v
             for k, v in raw_tp.items()
-            if k not in {"total_env_steps", "eval_interval", "log_interval", "logging_method", "console_log_train", "wandb_project", "wandb_group", "wandb_run", "save_video_at_end", "save_algo_at_end", "video_save_dir", "algo_save_dir", "threshold_exit_training_on_eval_score"}
+            if k not in {"total_env_steps", "eval_interval", "eval_envs", "log_interval", "logging_method", "console_log_train", "wandb_project", "wandb_group", "run_name", "num_seeds", "save_result", "save_video_at_end", "save_algo_at_end", "video_save_dir", "algo_save_dir", "threshold_exit_training_on_eval_score"}
         } or None,
     )
 
@@ -107,6 +111,9 @@ def load_yaml_config(path: str) -> TrainConfig:
         override_cfg=bool(raw_inference.get("override_cfg", False)),
         algo_path=str(raw_inference.get("algo_path", "")),
     )
+
+    # Assertions
+    assert train_params.eval_envs % env_cfg.num_envs == 0    # Eval envs must be divisible by your num envs
 
     return TrainConfig(
         env=env_cfg,

@@ -1,16 +1,17 @@
 env:
   name: LunarLander-v3
   num_envs: 16
-  max_episode_steps: 300   # 30 fps
+  max_episode_steps: 500   # 30 fps
 
 
 algo:
   name: ddqn
   gamma: 0.99
-  lr_start: 2e-4       # ddqn paper (pg. 9) uses constant lr=0.00025
-  lr_end:   2e-4
+  lr_start: 2.5e-4       # ddqn paper (pg. 9) uses constant lr=0.00025
+  lr_end:   2.5e-4
   lr_warmup_env_steps: 100000
-  batch_size: 64       # ddqn paper (pg. 9) uses B=32
+  batch_size: 32       # ddqn paper (pg. 9) uses B=32
+  n_step: 3            # n-step TD learning (1 = standard TD)
   update_every_steps: 1
   use_action_for_steps_train: 1
   use_action_for_steps_eval: 1
@@ -18,7 +19,7 @@ algo:
   buffer_size: 500000    # ddqn paper (pg. 9) uses 1M for this but train on atari (200M frames)
   buffer_type: priority_experience_replay
   warmup_buffer_size: 50000
-  overwrite_target_net_grad_updates: 512   # Update target net after this many SGD steps, not environment steps. Num env steps would be this * num_envs * update_every_steps
+  overwrite_target_net_grad_updates: 1024   # Update target net after this many SGD steps, not environment steps. Num env steps would be this * num_envs * update_every_steps
 
 
 sampler:
@@ -46,11 +47,11 @@ networks:
       mlp_activations: [relu, relu, identity]
       mlp_bias: True
       mlp_layer_type: [Linear, NoisyLinear, NoisyLinear]
-      mlp_layer_extra_args: [{}, {sigma0: 1.0}, {sigma0: 1.0}]
+      mlp_layer_extra_args: [{}, {sigma0: 0.5}, {sigma0: 0.5}]
 
 
 train:
-  total_env_steps: 1000000
+  total_env_steps: 1500000
   log_interval: 100000
   eval_interval: 100000
   eval_envs: 128
@@ -59,9 +60,11 @@ train:
   console_log_train: True
   save_video_at_end: True
   save_algo_at_end: True
-  wandb_project: rl-benchmarking
-  wandb_group: lunarlander-v3_ddqn
-  wandb_run: lunarlander-v3_ddqn_run1
+  # wandb_project: set this in config.py
+  wandb_group: lunarlander_ddqn
+  run_name: lunarlander_ddqn_exp1
+  num_seeds: 1
+  save_result: False
 
 
 inference:

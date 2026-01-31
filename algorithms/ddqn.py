@@ -102,74 +102,79 @@ class DDQN(BaseAlgorithm):
         Inputs:
         - transition: For each element in transition, it should be of shape 'B x C' where 'C' can be any arbtirary shape (so long as that's what we're working with in our networks)
         """
-        self.replay_buffer.add(transition)
+        completed_episodes = self.replay_buffer.add(transition)
+        if not completed_episodes:
+            return []
         
-        avg_reward = torch.mean(transition.reward).item()
-        avg_action_value = torch.mean(transition.act.info['action_values']).item()
-        avg_max_action_value = torch.mean(transition.act.info['action_values'].max(dim=1).values).item()
-        avg_selected_action_value = torch.mean(transition.act.info['action_values'].gather(1, transition.act.action.long())).item()
+        observed_results = []
+        for completed in completed_episodes:
+            avg_reward = completed.reward.item()
+            action_values = completed.act.info['action_values']
+            val_mean, val_std = action_values.mean().item(), action_values.std().item()
 
-        observed_results = [
-            RunResults("Avg. Reward", avg_reward, "mean"),
-            RunResults("Avg. Action Value", avg_action_value, "mean"),
-            RunResults("Avg. Max Action Value", avg_max_action_value, "mean"),
-            RunResults("Avg. Selected Action Value", avg_selected_action_value, "mean"),
-            # RunResults("Avg. Epsilon", self.sampler.get_epsilon(), "mean")
-        ]
+            observed_results.extend([
+                RunResults("Avg. Episodic Reward", avg_reward, "batched_mean"),
+                RunResults("Value Estimates", (val_mean, val_std), "batched_mean", category="val_est", value_format="mean_std", write_to_file=True, smoothing=False, aggregation_steps=50),
+            ])
+        
+        if self.cfg.sampler.name == "epsilon_greedy": 
+            observed_results.append(RunResults("Avg. Epsilon", self.sampler.get_epsilon(), "mean"))
 
         return observed_results
 
     def update(self) -> list[RunResults]:
         self.networks['q_1'].train()
+        # Will do this at first step then every 'overwrite_target_net_grad_updates' update calls
         if self.step_info["update_num"] % self.cfg.algo.extra["overwrite_target_net_grad_updates"] == 0:
             self._copy_q1_to_q2()
 
         self.step_info["update_num"] += 1
-        obs, actions, rewards, next_obs, terminated, truncated, act_info, info, weights = self.replay_buffer.sample(self.cfg.algo.batch_size, self.device)
+        n_step = self.cfg.algo.n_step
+        gamma = self.cfg.algo.gamma
+        obs, actions, n_rewards, next_obs, terminated, truncated, act_info, info, weights, actual_n = self.replay_buffer.sample(
+            self.cfg.algo.batch_size, self.device, n_step=n_step, gamma=gamma
+        )
         _ = [optimizer.zero_grad() for optimizer in self.optimizers.values()]
 
         actions = actions.long()
-        rewards = rewards.float()
+        n_rewards = n_rewards.float()
 
         # Action selection a* = argmax_a Q_1(s', a)
         with torch.no_grad():
             next_action_values = self.networks['q_1'](next_obs)                # B x C
             greedy_actions = next_action_values.argmax(dim=1, keepdim=True)    # B x 1
 
-        # Action evaluation w/ Q_2 (target net)
+        # Action evaluation w/ Q_2 (target net) -- this is the 'Double' part of DDQN
         with torch.no_grad():
             next_action_values_target = self.networks['q_2'](next_obs)
             action_values_target = next_action_values_target.gather(1, greedy_actions)        # B x 1
 
-        # Compute bootstrapped values
+        # Compute n-step bootstrapped values: R_n + gamma^n * Q(s_{t+n}, a*)
         done = (terminated | truncated).float()
-        target_values = rewards + self.cfg.algo.gamma * (1.0 - done) * action_values_target   # B x 1
+        gamma_n = (gamma ** actual_n.float())  # [B x 1]
+        target_values = n_rewards + gamma_n * (1.0 - done) * action_values_target   # B x 1
 
-        # Optimize (use MSE)
+        # Optimize
         q_values = self.networks['q_1'](obs)
         q_taken = q_values.gather(1, actions)
         td_errors = (target_values - q_taken).detach()
         per_sample = F.smooth_l1_loss(q_taken, target_values, reduction="none").squeeze(-1)
-        # per_sample = (q_taken - target_values).pow(2).squeeze(-1)
         loss = (weights * per_sample).mean()
-        self.replay_buffer.update(td_errors)
-        surprise = td_errors.abs().flatten().tolist()
+        self.replay_buffer.update(td_errors)   # need to make this call in case we're using PER (update for td residuals)
+        residual = td_errors.abs().flatten().tolist()
 
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.networks["q_1"].parameters(), max_norm=10.0)
         
         current_lr = self.lr_schedulers["q_1"].get_last_lr()
-        grad_magnitudes = self._get_grad_magnitudes(self.networks["q_1"], lr=current_lr)
         _ = [optimizer.step() for optimizer in self.optimizers.values()]
         current_env_steps = int(self.step_info["rollout_steps"])
         _ = [scheduler.step(current_env_steps) for scheduler in self.lr_schedulers.values()]
 
         update_results = [
-            RunResults("Avg. Loss", loss.mean().item(), "mean"),
-            RunResults("Loss", torch.tensor([current_env_steps, loss.mean().item()]), "accumulating_writes"),
-            RunResults("Learning Rate", current_lr, "mean"),
-            RunResults("Surprise", surprise, "concat"),
-            # RunResults("Grad Magnitudes", grad_magnitudes, "dict_concat"),
+            RunResults("Loss", loss.mean().item(), "batched_mean", category="loss", write_to_file=True, smoothing=False, aggregation_steps=50),
+            RunResults("Avg. Learning Rate", current_lr, "mean"),
+            RunResults("Residual", residual, "concat", category="residual"),
         ]
 
         return update_results

@@ -7,19 +7,26 @@ import gymnasium as gym
 from gymnasium.wrappers import RecordVideo
 
 from algorithms.get_algorithm import get_algorithm
+from configs.config import config_to_dict
 from dataclass.primitives import BatchedTransition
 from trainer.helper import ResultLogger, RunResults, record_vec_grid_video, make_vec_envs
 
 
 
 class Trainer():
-    def __init__(self, cfg):
+    def __init__(self, cfg, seed: int | None = None, seed_idx: int = 0):
+        """
+        seed: override seed for this run (used in multi-seed runs)
+        seed_idx: index of this seed in the list (for labeling)
+        return
+        """
         self.cfg = cfg
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.seed_idx = seed_idx
+        self.current_seed = seed if seed is not None else cfg.algo.seed
         print(f"Using device: {self.device}")
-        self._set_global_seeds(cfg.algo.seed)
+        self._set_global_seeds(self.current_seed)
 
-        # Initialize env / algo
         start_time = time.time()
         self.train_envs = make_vec_envs(cfg.env, vectorization_mode="async")
         self.eval_envs = make_vec_envs(cfg.env, vectorization_mode="sync")
@@ -27,17 +34,14 @@ class Trainer():
         print(f"Successfully initialized env + algo in {(time.time() - start_time):.2f}s")
 
         self.wandb_run = None
-        # if "wandb" in self.cfg.train.logging_method:
-        #     self.wandb_run = wandb.init(
-        #         project=self.cfg.train.wandb_project,
-        #         group=self.cfg.train.wandb_group,
-        #         config={
-        #             "env": self.cfg.env,
-        #             "algo": self.cfg.algo,
-        #             "train": self.cfg.train,
-        #             "sampler": self.cfg.sampler,
-        #         },
-        #     )
+        if "wandb" in self.cfg.train.logging_method:
+            run_name = self._get_run_name()
+            self.wandb_run = wandb.init(
+                project=self.cfg.train.wandb_project,
+                group=self.cfg.train.wandb_group,
+                name=f"{run_name}_seed{seed_idx}",
+                config=config_to_dict(self.cfg),
+            )
 
         self.train_logger = ResultLogger(
             "Train",
@@ -45,6 +49,7 @@ class Trainer():
             max_steps=self.cfg.train.total_env_steps,
             wandb_run=self.wandb_run,
             dict_concat_stacked=True,
+            seed_idx=seed_idx,
         )
         self.eval_logger = ResultLogger(
             "Eval",
@@ -52,14 +57,15 @@ class Trainer():
             max_steps=self.cfg.train.total_env_steps,
             wandb_run=self.wandb_run,
             dict_concat_stacked=True,
+            seed_idx=seed_idx,
         )
 
 
     def train(self):
-        print(f"Starting training ({self.cfg.train.total_env_steps} steps)\n")
+        print(f"Starting training ({self.cfg.train.total_env_steps} steps) [Seed {self.seed_idx}: {self.current_seed}]:\n")
+        env_seed = self.current_seed
         self.num_env_steps, last_evaluation_step, num_meta_steps = 0, 0, 0
         last_log_step, log_interval = 0, self.cfg.train.log_interval
-        env_seed = self.cfg.algo.seed
         action_repeat = max(1, int(self.cfg.algo.use_action_for_steps_train))
 
         cur_obs, _ = self.train_envs.reset(seed=env_seed)
@@ -69,7 +75,7 @@ class Trainer():
             batched_actions = self.algo.act(cur_obs_tensor, eval_mode=False)
             env_actions = self._actions_to_env(batched_actions.action)
 
-            for _ in range(action_repeat):
+            for _ in range(action_repeat):   # This allows us to use the same action for 'n' frames
                 next_obs, rewards, terminations, truncations, infos = self.train_envs.step(env_actions)
                 transition = BatchedTransition(
                     obs = cur_obs_tensor,
@@ -82,15 +88,14 @@ class Trainer():
                 )
                 self.num_env_steps += rewards.shape[0]
                 self.algo.step_info["rollout_steps"] = self.num_env_steps
-                observe_results = self.algo.observe(transition)
 
-                update_results = None
-                if self.algo.ready_to_update() and num_meta_steps % self.cfg.algo.update_every_steps == 0:
-                    update_results = self.algo.update()
+                observe_results = self.algo.observe(transition)
+                update_results = self.algo.update() if self.algo.ready_to_update() and num_meta_steps % self.cfg.algo.update_every_steps == 0 else None
                 
                 # Logging
                 self.train_logger.update(observe_results)
                 self.train_logger.update(update_results)
+                self.train_logger.flush(step=self.num_env_steps)  # Check aggregation thresholds for CSV writes
                 if (self.num_env_steps - last_log_step) >= log_interval:
                     self.train_logger.log(step=self.num_env_steps, console_log=self.cfg.train.console_log_train)
                     self.train_logger.zero()
@@ -102,6 +107,7 @@ class Trainer():
                     # Test for early exit
                     if (self.cfg.train.threshold_exit_training_on_eval_score is not None and mean_eval_return >= self.cfg.train.threshold_exit_training_on_eval_score):
                         print(f"\nTraining terminated early: ({mean_eval_return:.1f} >= {self.cfg.train.threshold_exit_training_on_eval_score:.1f})")
+                        self._final_flush()
                         return
 
                 cur_obs = next_obs
@@ -113,40 +119,45 @@ class Trainer():
 
             if self.num_env_steps >= self.cfg.train.total_env_steps:
                 break
+        
+        self._final_flush()
             
+    def _final_flush(self):
+        """Flush all pending train logger data at end of training."""
+        final_step = self.num_env_steps
+        if self.cfg.train.total_env_steps is not None:
+            final_step = min(final_step, self.cfg.train.total_env_steps)
+        self.train_logger.flush(step=final_step, force=True)
+        self.train_logger.log(step=final_step, console_log=False)
 
     def eval(self, save_video: bool = False) -> float:
-        eval_runs = self.eval_env(save_video=save_video)
+        mean_reward, std_reward, all_rewards = self.eval_env(save_video=save_video)
         env_steps = self.num_env_steps if hasattr(self, "num_env_steps") else 0
-        for r in eval_runs:
-            if r.name == "Eval Mean Return":
-                eval_runs.append(RunResults("Eval Reward", (env_steps, float(r.value)), "accumulating_writes"))
-                break
+        eval_runs = [
+            RunResults("Avg. Episodic Reward", mean_reward, "mean"),
+            RunResults("Episodic Rewards", all_rewards, "concat", category="histogram"),
+            RunResults("Eval Reward", (env_steps, mean_reward, std_reward), "accumulating_writes", category="other", smoothing=False, show_ci=True, publish_to_wandb=True),
+        ]
         self.eval_logger.update(eval_runs)
         self.eval_logger.log(step=env_steps)
         self.eval_logger.zero()
-        for r in eval_runs:
-            if r.name == "Eval Mean Return":
-                return float(r.value)
-        return 0.0
+        return mean_reward
 
-    def eval_env(self, save_video: bool = False) -> list[RunResults]:
-        eval_envs = self.cfg.train.extra["eval_envs"]
+    def eval_env(self, save_video: bool = False) -> tuple[float, float, np.ndarray]:
+        """Returns (mean_reward, std_reward, all_episode_rewards)."""
+        eval_envs = self.cfg.train.eval_envs
         num_envs = self.cfg.env.num_envs
         num_batches = eval_envs // num_envs
         action_repeat = max(1, int(self.cfg.algo.use_action_for_steps_eval))
-
         all_episode_returns: list[np.ndarray] = []
-        selected_action_value_sum = 0.0
-        selected_action_value_count = 0
 
         # Optional: record ONE tiled grid video (one episode per env tile)
-        grid_frames = []
         if save_video:
+            grid_frames = []
             side = int(round(num_envs ** 0.5))
             assert side * side == num_envs, f"num_envs={num_envs} must be a perfect square for a square grid"
             grid_frames = record_vec_grid_video(
-                    env_cfg=self.cfg.env,
+                env_cfg=self.cfg.env,
                 algo=self.algo,
                 to_tensor_obs=self._to_tensor_obs,
                 actions_to_env=self._actions_to_env,
@@ -155,6 +166,9 @@ class Trainer():
                 pad=2,
                 vectorization_mode="sync",
             )
+            self._save_video(grid_frames)
+
+        # Complete your env rollouts / get scores
         for batch_idx in range(num_batches):
             cur_obs, _ = self.eval_envs.reset()
             done = np.zeros(num_envs, dtype=bool)
@@ -169,42 +183,31 @@ class Trainer():
 
                     active = ~done
                     episode_returns[active] += rewards[active]
-
-                    if batched_actions.info is not None and "action_values" in batched_actions.info:
-                        action_values = batched_actions.info["action_values"]
-                        actions = batched_actions.action
-                        selected = action_values.gather(1, actions.long())
-                        active_mask = torch.as_tensor(active, device=selected.device)
-                        selected_action_value_sum += selected[active_mask].sum().item()
-                        selected_action_value_count += int(active_mask.sum().item())
-
                     done |= (terminations | truncations)
                     cur_obs = next_obs
 
                     if done.all():
                         break
-
             all_episode_returns.append(episode_returns)
 
-        # Save tiled grid video
-        if save_video and grid_frames:
-            self._save_video(grid_frames)
+        all_episode_rewards = np.concatenate(all_episode_returns, axis=0)
+        mean_reward = float(np.mean(all_episode_rewards))
+        std_reward = float(np.std(all_episode_rewards))
 
-        all_episode_returns = np.concatenate(all_episode_returns, axis=0)
-        mean_return = float(np.mean(all_episode_returns))
-        mean_selected_action_value = None
-        if selected_action_value_count > 0:
-            mean_selected_action_value = selected_action_value_sum / selected_action_value_count
-
-        return [
-            RunResults("Eval Mean Return", mean_return, "mean"),
-            RunResults("Eval Mean Selected Action Value", mean_selected_action_value if mean_selected_action_value is not None else 0.0, "mean"),
-        ]
+        return mean_reward, std_reward, all_episode_rewards
 
     def save_algo(self):
         algo_path = self._get_filepath(type="algo")
         self.algo.save(algo_path)
         print(f"Algo saved to: {algo_path}")
+
+    def close(self):
+        """Clean up resources to free memory between seed runs."""
+        self.train_envs.close()
+        self.eval_envs.close()
+        del self.algo
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def _save_video(self, frames: list[np.ndarray]):
         """Save recorded frames as a video file."""
@@ -219,8 +222,13 @@ class Trainer():
         for model in self.algo.networks.values():
             model.to(self.device)
 
+    def _get_run_name(self) -> str:
+        if self.cfg.train.run_name:
+            return self.cfg.train.run_name
+        return f"{self.cfg.env.name}_{self.cfg.algo.name}"
+
     def _get_filepath(self, type):
-        run_name = self.cfg.train.wandb_run if self.cfg.train.wandb_run else f"{self.cfg.env.name}_{self.cfg.algo.name}"
+        run_name = self._get_run_name()
         run_name = run_name.replace("/", "_").replace("\\", "_").replace(":", "_")
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         if type == "algo":

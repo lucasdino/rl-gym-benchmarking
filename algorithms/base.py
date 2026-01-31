@@ -24,8 +24,8 @@ class BaseAlgorithm(ABC):
         ...
 
     @abstractmethod
-    def observe(self, transition: BatchedTransition) -> None:
-        """ Log transitions to your buffer / rollout buffer. """
+    def observe(self, transition: BatchedTransition) -> list:
+        """ Log transitions to your buffer / rollout buffer. Returns list of RunResults. """
         ...
 
     @abstractmethod
