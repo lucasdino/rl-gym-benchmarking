@@ -27,27 +27,43 @@ sampler:
   starting_epsilon: 1.0
   ending_epsilon: 0.1
   warmup_steps: 0
-  decay_until_step: 800000
+  decay_until_step: 1200000
 
 
 networks:
   q_1:
-    network_type: mlp
+    network_type: duelingnet
     network_args:
-      mlp_dims: ["InDims", 128, 128, "OutDims"]
-      mlp_activations: [relu, relu, identity]
+      shared_mlp_dims: ["InDims", 128]
+      shared_mlp_activations: [relu]
+      shared_mlp_layer_type: [Linear]
+      shared_mlp_layer_extra_args: [{}]
+      valuehead_mlp_dims: ["InDims", 128, "OutDims"]
+      valuehead_mlp_activations: [relu, identity]
+      valuehead_mlp_layer_type: [Linear, Linear]
+      valuehead_mlp_layer_extra_args: [{}, {}]
+      actionhead_mlp_dims: ["InDims", 128, "OutDims"]
+      actionhead_mlp_activations: [relu, identity]
+      actionhead_mlp_layer_type: [Linear, Linear]
+      actionhead_mlp_layer_extra_args: [{}, {}]
       mlp_bias: True
-      mlp_layer_type: [Linear, Linear, Linear]
-      mlp_layer_extra_args: [{}, {}, {}]
 
   q_2:
-    network_type: mlp
+    network_type: duelingnet
     network_args:
-      mlp_dims: ["InDims", 128, 128, "OutDims"]
-      mlp_activations: [relu, relu, identity]
+      shared_mlp_dims: ["InDims", 128]
+      shared_mlp_activations: [relu]
+      shared_mlp_layer_type: [Linear]
+      shared_mlp_layer_extra_args: [{}]
+      valuehead_mlp_dims: ["InDims", 128, "OutDims"]
+      valuehead_mlp_activations: [relu, identity]
+      valuehead_mlp_layer_type: [Linear, Linear]
+      valuehead_mlp_layer_extra_args: [{}, {}]
+      actionhead_mlp_dims: ["InDims", 128, "OutDims"]
+      actionhead_mlp_activations: [relu, identity]
+      actionhead_mlp_layer_type: [Linear, Linear]
+      actionhead_mlp_layer_extra_args: [{}, {}]
       mlp_bias: True
-      mlp_layer_type: [Linear, Linear, Linear]
-      mlp_layer_extra_args: [{}, {}, {}]
 
 
 train:
@@ -61,9 +77,9 @@ train:
   save_video_at_end: True
   save_algo_at_end: True
   # wandb_project: set this in config.py
-  wandb_group: lunarlander_ddqn
-  run_name: lunarlander_dqnvddqn_ddqn
-  num_seeds: 3
+  wandb_group: lunarlander_duelingnet
+  run_name: lunarlander_duelingnet
+  num_seeds: 1
   save_result: True
 
 

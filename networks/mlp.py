@@ -48,9 +48,7 @@ class MLP(nn.Module):
 
         # Defining our final network
         self.net = nn.Sequential(*layers)
-
         self._print_architecture()
-
 
 
     def _init_params(self):

@@ -1,5 +1,6 @@
 from networks.mlp import MLP
 from networks.cnn import CNN
+from networks.mlp_duelingnet import MLP_DuelingNet
 
 from configs.config import SingleNetworkConfig
 
@@ -8,6 +9,7 @@ from configs.config import SingleNetworkConfig
 NETWORK_MAPPING = {
     "mlp": MLP,
     "cnn": CNN,
+    "duelingnet": MLP_DuelingNet,
 }
 
 def build_network(cfg: SingleNetworkConfig, obs_space, act_space):

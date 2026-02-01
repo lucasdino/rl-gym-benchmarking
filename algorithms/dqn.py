@@ -34,7 +34,7 @@ class DQN(BaseAlgorithm):
         """ Set up replay buffer / PER. """
         buffer_type = self.cfg.algo.extra["buffer_type"]
         buffer_cls = BUFFER_MAPPING[buffer_type]
-        self.replay_buffer = buffer_cls(self.cfg.algo.extra["buffer_size"])
+        self.replay_buffer = buffer_cls(self.cfg.algo.extra["buffer_size"], self.cfg)
 
     def _instantiate_networks(self):
         """ Helper function to set-up all our networks. """
@@ -133,7 +133,7 @@ class DQN(BaseAlgorithm):
         n_step = self.cfg.algo.n_step
         gamma = self.cfg.algo.gamma
         obs, actions, n_rewards, next_obs, terminated, truncated, act_info, info, weights, actual_n = self.replay_buffer.sample(
-            self.cfg.algo.batch_size, self.device, n_step=n_step, gamma=gamma
+            self.cfg.algo.batch_size, self.device
         )
         self.optimizers['q_1'].zero_grad()   # only doing updates on q_1
 
@@ -156,7 +156,6 @@ class DQN(BaseAlgorithm):
         td_errors = (target_values - q_taken).detach()
         per_sample = F.smooth_l1_loss(q_taken, target_values, reduction="none").squeeze(-1)
         loss = (weights * per_sample).mean()
-        self.replay_buffer.update(td_errors)   # need to make this call in case we're using PER (update td residuals for priority)
         residual = td_errors.abs().flatten().tolist()
 
         loss.backward()
@@ -166,6 +165,9 @@ class DQN(BaseAlgorithm):
         self.optimizers['q_1'].step()
         current_env_steps = int(self.step_info["rollout_steps"])
         self.lr_schedulers['q_1'].step(current_env_steps)
+
+        # need to make this call in case we're using PER (update td residuals for priority)
+        self.replay_buffer.update(td_errors, step=current_env_steps)   
 
         update_results = [
             RunResults("Loss", loss.mean().item(), "batched_mean", category="loss", write_to_file=True, smoothing=False, aggregation_steps=50),

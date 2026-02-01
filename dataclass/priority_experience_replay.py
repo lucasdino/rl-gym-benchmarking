@@ -1,18 +1,28 @@
 import torch
 
+from configs.config import TrainConfig
 from dataclass.base import BaseBuffer
 from dataclass.primitives import BatchedActionOutput, BatchedTransition
 
 
 
 class PriorityExperienceReplay(BaseBuffer):
-    def __init__(self, buffer_length: int, epsilon: float = 1e-6, alpha: float = 0.6):
+    def __init__(self, buffer_length: int, cfg: TrainConfig, epsilon: float = 1e-6, alpha: float | None = None):
+        """ Implementation of this paper: https://arxiv.org/pdf/1511.05952. Heavily vibe-coded but I audited the math. """
         self.buffer_length = buffer_length
+        self.cfg = cfg
         self._cur_idx = 0
         self._full = False
         self._initialized = False
         self._epsilon = float(epsilon)
-        self._alpha = alpha
+        cfg_extra = cfg.algo.extra or {}
+
+        # These alpha / beta_start / beta_end use params + annealing schedule from the dueling nets paper (https://arxiv.org/pdf/1511.06581)
+        self._alpha = cfg_extra.get("per_alpha", alpha if alpha is not None else 0.7)
+        self._beta_start = cfg_extra.get("per_beta_start", 0.5)
+        self._beta_end = cfg_extra.get("per_beta_end", 1.0)
+        self._beta = cfg_extra.get("per_beta", self._beta_start)
+        self._total_steps = cfg.train.total_env_steps
         self._priorities = torch.zeros(buffer_length)
         self._max_priority = 1.0
         self._last_indices = None
@@ -20,6 +30,9 @@ class PriorityExperienceReplay(BaseBuffer):
         self._rollout_ids: set[int] = set()
         self._idx_to_rollout_id: torch.Tensor | None = None
         self._valid_count = 0
+        self._gamma = cfg.algo.gamma
+        self._n_step = cfg.algo.n_step
+        self._last_update_step = 0
 
 
     # ===================================
@@ -134,7 +147,7 @@ class PriorityExperienceReplay(BaseBuffer):
 
         return completed
 
-    def sample(self, num_samples: int, device, beta: float = 0.4, n_step: int = 1, gamma: float = 0.99):
+    def sample(self, num_samples: int, device):
         """ Samples n-step transitions with priority weighting. """
         if self._valid_count == 0:
             raise ValueError("Cannot sample from an empty buffer")
@@ -146,10 +159,10 @@ class PriorityExperienceReplay(BaseBuffer):
         indices = torch.multinomial(probs, num_samples, replacement=True)
         self._last_indices = indices
 
-        weights = (self._valid_count * probs[indices]) ** (-beta)
+        weights = (self._valid_count * probs[indices]) ** (-self._beta)
         weights = weights / weights.max()
 
-        obs, actions, n_rewards, next_obs, terminated, truncated, actual_n = self._build_n_step_vectorized(indices, n_step, gamma)
+        obs, actions, n_rewards, next_obs, terminated, truncated, actual_n = self._build_n_step_vectorized(indices, self._n_step, self._gamma)
         act_info = {k: v[indices].to(device) for k, v in self._act_info.items()} if self._act_info else None
         info = {k: v[indices].to(device) for k, v in self._info.items()} if self._info else None
 
@@ -199,9 +212,13 @@ class PriorityExperienceReplay(BaseBuffer):
         return (self._obs[starts], self._act_action[starts], n_rewards,
                 self._next_obs[final_indices], self._terminated[final_indices], self._truncated[final_indices], actual_n)
 
-    def update(self, td_errors) -> None:
+    def update(self, td_errors, step: int | None = None) -> None:
         if self._last_indices is None:
             raise ValueError("update called before sample")
+        if step is not None:
+            self._last_update_step = int(step)
+            frac = min(max(self._last_update_step / max(self._total_steps, 1), 0.0), 1.0)
+            self._beta = self._beta_start + frac * (self._beta_end - self._beta_start)
         td_tensor = torch.as_tensor(td_errors).detach().flatten()
         new_priorities = (td_tensor.abs().to(self._priorities.device) + self._epsilon) ** self._alpha
         self._priorities[self._last_indices] = new_priorities

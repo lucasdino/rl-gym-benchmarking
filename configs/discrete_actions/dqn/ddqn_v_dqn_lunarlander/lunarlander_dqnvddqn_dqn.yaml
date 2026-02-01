@@ -63,8 +63,8 @@ train:
   # wandb_project: set this in config.py
   wandb_group: lunarlander_dqn
   run_name: lunarlander_dqnvddqn_dqn
-  num_seeds: 5
-  save_result: False
+  num_seeds: 3
+  save_result: True
 
 
 inference:

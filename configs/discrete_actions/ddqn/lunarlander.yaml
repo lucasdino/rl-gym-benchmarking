@@ -62,9 +62,9 @@ train:
   save_algo_at_end: True
   # wandb_project: set this in config.py
   wandb_group: lunarlander_ddqn
-  run_name: lunarlander_ddqn_v1
+  run_name: lunarlander_ddqn_annealedper
   num_seeds: 1
-  save_result: False
+  save_result: True
 
 
 inference:

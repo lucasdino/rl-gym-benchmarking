@@ -16,12 +16,12 @@ class BaseBuffer(ABC):
         ...
 
     @abstractmethod
-    def sample(self, num_samples: int, device, beta: float = None, n_step: int = 1, gamma: float = 0.99) -> Any:
+    def sample(self, num_samples: int, device) -> Any:
         """ Sample a batch from the buffer. If n_step > 1, returns n-step transitions. """
         ...
 
     @abstractmethod
-    def update(self, td_errors) -> None:
+    def update(self, td_errors, step: int | None = None) -> None:
         """ Update priorities (no-op for non-prioritized buffers). """
         ...
 

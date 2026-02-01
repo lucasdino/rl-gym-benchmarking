@@ -21,7 +21,7 @@ class SoftActorCritic(BaseAlgorithm):
             act_space = act_space,
             device = device
         )
-        self.replay_buffer = ReplayBuffer(cfg.algo.extra["buffer_size"])
+        self.replay_buffer = ReplayBuffer(cfg.algo.extra["buffer_size"], cfg)
         self._instantiate_networks()
         self._instantiate_optimizer()
 

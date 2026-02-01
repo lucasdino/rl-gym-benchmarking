@@ -1,13 +1,15 @@
 import torch
 
+from configs.config import TrainConfig
 from dataclass.base import BaseBuffer
 from dataclass.primitives import BatchedActionOutput, BatchedTransition
 
 
 
 class ReplayBuffer(BaseBuffer):
-    def __init__(self, buffer_length: int):
+    def __init__(self, buffer_length: int, cfg: TrainConfig):
         self.buffer_length = buffer_length
+        self.cfg = cfg
         self._cur_idx = 0
         self._full = False
         self._initialized = False
@@ -15,6 +17,9 @@ class ReplayBuffer(BaseBuffer):
         self._rollout_ids: set[int] = set()
         self._idx_to_rollout_id: torch.Tensor | None = None
         self._valid_count = 0
+        self._gamma = cfg.algo.gamma
+        self._n_step = cfg.algo.n_step
+        self._last_update_step = 0
 
 
     # ===================================
@@ -126,7 +131,7 @@ class ReplayBuffer(BaseBuffer):
 
         return completed
 
-    def sample(self, num_samples: int, device, beta: float = None, n_step: int = 1, gamma: float = 0.99):
+    def sample(self, num_samples: int, device):
         """ Samples n-step transitions. """
         if self._valid_count == 0:
             raise ValueError("Cannot sample from an empty buffer")
@@ -134,7 +139,7 @@ class ReplayBuffer(BaseBuffer):
         max_idx = self.buffer_length if self._full else self._cur_idx
         indices = torch.randint(0, max_idx, (num_samples,), device=self._obs.device)
 
-        obs, actions, n_rewards, next_obs, terminated, truncated, actual_n = self._build_n_step_vectorized(indices, n_step, gamma)
+        obs, actions, n_rewards, next_obs, terminated, truncated, actual_n = self._build_n_step_vectorized(indices, self._n_step, self._gamma)
         act_info = {k: v[indices].to(device) for k, v in self._act_info.items()} if self._act_info else None
         info = {k: v[indices].to(device) for k, v in self._info.items()} if self._info else None
         weights = torch.ones(num_samples, device=device)
@@ -185,8 +190,9 @@ class ReplayBuffer(BaseBuffer):
         return (self._obs[starts], self._act_action[starts], n_rewards,
                 self._next_obs[final_indices], self._terminated[final_indices], self._truncated[final_indices], actual_n)
 
-    def update(self, *args, **kwargs) -> None:
-        pass
+    def update(self, td_errors=None, step: int | None = None) -> None:
+        if step is not None:
+            self._last_update_step = int(step)
 
     def __len__(self) -> int:
         return self._valid_count
