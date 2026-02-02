@@ -57,6 +57,15 @@ def load_yaml_config(path: str) -> TrainConfig:
 
     # Networks: key in YAML becomes the logical name (policy, value, q1, ...)
     raw_networks: Dict[str, Dict[str, Any]] = raw["networks"]
+    dist_num_atoms = raw_algo.get("dist_num_atoms")
+    if dist_num_atoms is not None:
+        for net_dict in raw_networks.values():
+            net_args = net_dict.get("network_args")
+            if net_args is None:
+                net_args = {}
+                net_dict["network_args"] = net_args
+            net_args["dist_num_atoms"] = dist_num_atoms
+
     network_cfgs: Dict[str, NetworksConfig] = {}
     for net_name, net_dict in raw_networks.items():
         network_cfgs[net_name] = SingleNetworkConfig(
@@ -64,7 +73,10 @@ def load_yaml_config(path: str) -> TrainConfig:
             network_type=net_dict["network_type"],
             network_args=net_dict.get("network_args", {}),
         )
+
     networks = NetworksConfig(networks=network_cfgs)
+
+
 
     # Train params
     raw_tp: Dict[str, Any] = raw["train"]

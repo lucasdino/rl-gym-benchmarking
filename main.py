@@ -12,8 +12,10 @@ from trainer.helper.plot_server import LIVE_PLOTS_DIR, CFG_GREEN, COLOR_RESET
 
 # Can either point to a folder with .yamls or to specific .yaml files
 configs = [
-    "configs/discrete_actions/duelingnet/dueling_v_ddqn_cartpole",
-    "configs/discrete_actions/duelingnet/lunarlander.yaml",
+    "configs/discrete_actions/rainbow/dueling_v_dist_lunarlander",
+    # "configs/discrete_actions/rainbow/dueling_v_dist_cartpole",
+    # "configs/discrete_actions/duelingnet/dueling_v_ddqn_cartpole",
+    # "configs/discrete_actions/duelingnet/lunarlander.yaml",
     # "configs/discrete_actions/dqn/ddqn_v_dqn_cartpole",
     # "configs/discrete_actions/ddqn/noisynet_ablation",
     # "configs/discrete_actions/dqn/ddqn_v_dqn_lunarlander",
@@ -25,7 +27,7 @@ configs = [
     # "configs/discrete_actions/ddqn/cartpole.yaml",
 ]
 
-START_PLOT_SERVER = False
+START_PLOT_SERVER = True
 PLOT_SERVER_GRACE_SECONDS = 5
 
 

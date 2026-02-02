@@ -48,7 +48,6 @@ class DQN(BaseAlgorithm):
         # Sending to GPU (if using GPU)
         for model in self.networks.values():
             model.to(self.device)
-        # Ensure we have the required nets for DQN
         assert all([req_net in self.networks for req_net in ("q_1", "q_2")])
         self.networks["q_2"].eval()   # always set to eval for this
 
