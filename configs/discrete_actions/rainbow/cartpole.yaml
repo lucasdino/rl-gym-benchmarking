@@ -25,6 +25,23 @@ algo:
   dist_num_atoms: 51
 
 
+train:
+  total_env_steps: 200000
+  log_interval: 20000
+  eval_interval: 20000
+  eval_envs: 64
+  # threshold_exit_training_on_eval_score: 500
+  logging_method: [console]
+  console_log_train: True
+  # wandb_project: set this in config.py
+  wandb_group: cartpole_distrl
+  run_name: cartpole_distrl
+  num_seeds: 1
+  save_result: False
+  save_video_at_end: True
+  save_algo_at_end: False
+
+
 sampler:
   name: epsilon_greedy
   starting_epsilon: 1.0
@@ -69,24 +86,7 @@ networks:
       mlp_bias: True
 
 
-train:
-  total_env_steps: 200000
-  log_interval: 20000
-  eval_interval: 20000
-  eval_envs: 64
-  # threshold_exit_training_on_eval_score: 500
-  logging_method: [console]
-  console_log_train: True
-  # wandb_project: set this in config.py
-  wandb_group: cartpole_distrl
-  run_name: cartpole_distrl_v1
-  num_seeds: 1
-  save_result: True
-  save_video_at_end: False
-  save_algo_at_end: False
-
-
 inference:
   inference_only: False
-  override_cfg: False     # If true, override the cfg with what is in this
-  algo_path: saved_data/saved_algos/ddqn/cartpole-v1_ddqn_run1_20260127_160158.pkl
+  # algo_path: None
+  # override_cfg: False     # If true, override the cfg with what is in this

@@ -113,7 +113,8 @@ class CNN(nn.Module):
     def _print_architecture(self) -> None:
         """Print a concise architecture summary."""
         parts = [self._format_layer(layer) for layer in list(self.cnn) + list(self.head)]
-        print(f"[Net: {self.cfg.name}] " + " -> ".join(parts))
+        num_params = sum(p.numel() for p in self.parameters())
+        print(f"[Net: {self.cfg.name}] " + " -> ".join(parts) + f" | Params: {num_params:,}")
 
     @staticmethod
     def _resolve_input_shape(shape: tuple[int, ...], input_format: str) -> tuple[int, int, int, str]:

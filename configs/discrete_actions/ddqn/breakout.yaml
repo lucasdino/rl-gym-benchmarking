@@ -3,7 +3,7 @@ env:
   is_atari: True
   num_envs: 32
   max_episode_steps: 1000   # 30 fps
-  stack_stamples: 4
+  stack_samples: 4
 
 algo:
   name: ddqn

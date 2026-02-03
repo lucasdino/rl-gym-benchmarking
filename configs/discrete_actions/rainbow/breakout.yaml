@@ -1,0 +1,101 @@
+env:
+  name:                 breakout
+  num_envs:             32
+  max_episode_steps:    500    # @ 30 fps
+  normalize_obs:        False
+  normalize_reward:     False
+  is_atari:             True
+  stack_samples:        4
+
+
+algo:
+  name:                 distributional_ddqn
+  # seed:                 42       # Comment out if you want random seeding        
+  gamma:                0.99
+  lr_start:             2.5e-4   # Standard is 2.5e-4  
+  lr_end:               2.5e-4
+  lr_warmup_env_steps:  100000
+  batch_size:           32       
+  n_step:               8      # n-step TD estimates
+  update_every_steps:   1
+  use_action_for_steps_train:   1
+  use_action_for_steps_eval:    1
+  buffer_size:          20000
+  buffer_type:          priority_experience_replay     # {priority_experience_replay, replay_buffer}
+  warmup_buffer_size:   5000
+  overwrite_target_net_grad_updates:  256   # In terms of 'number grad updates', not samples seen. Num steps would be this * num_envs * update_every_steps
+  dist_rl_vmin: -10
+  dist_rl_vmax: 10
+  dist_num_atoms: 51
+
+
+train:
+  run_name:         breakout_rainbow
+  total_env_steps:  8000000
+  log_interval:     200000
+  eval_interval:    200000
+  eval_envs:        64
+  logging_method:   [console]
+
+  num_seeds:            1
+  console_log_train:    True
+  # threshold_exit_training_on_eval_score: 500
+  # wandb_project: Recommend set this in config.py
+  wandb_group:          breakout_distrl
+  save_result:          True
+  save_video_at_end:    True
+  save_algo_at_end:     True
+
+
+sampler:
+  name: epsilon_greedy
+  starting_epsilon: 1.0
+  ending_epsilon: 0.1
+  warmup_steps: 0
+  decay_until_step: 4000000
+
+
+networks:
+  q_1:
+    network_type: cnn_distributional_dueling
+    network_args:
+      input_format: CHW
+      cnn_layers:
+        - {out_channels: 32, kernel_size: 8, stride: 4}
+        - {out_channels: 64, kernel_size: 4, stride: 2}
+        - {out_channels: 64, kernel_size: 3, stride: 1}
+      cnn_activations: [relu, relu, relu]
+      valuehead_mlp_dims: ["InDims", 512, "OutDims"]
+      valuehead_mlp_activations: [relu, identity]
+      valuehead_mlp_layer_type: [Linear, Linear]
+      valuehead_mlp_layer_extra_args: [{}, {}]
+      actionhead_mlp_dims: ["InDims", 512, "OutDims"]
+      actionhead_mlp_activations: [relu, identity]
+      actionhead_mlp_layer_type: [Linear, Linear]
+      actionhead_mlp_layer_extra_args: [{}, {}]
+      mlp_bias: True
+
+  q_2:
+    network_type: cnn_distributional_dueling
+    network_args:
+      input_format: CHW
+      cnn_layers:
+        - {out_channels: 32, kernel_size: 8, stride: 4}
+        - {out_channels: 64, kernel_size: 4, stride: 2}
+        - {out_channels: 64, kernel_size: 3, stride: 1}
+      cnn_activations: [relu, relu, relu]
+      valuehead_mlp_dims: ["InDims", 512, "OutDims"]
+      valuehead_mlp_activations: [relu, identity]
+      valuehead_mlp_layer_type: [Linear, Linear]
+      valuehead_mlp_layer_extra_args: [{}, {}]
+      actionhead_mlp_dims: ["InDims", 512, "OutDims"]
+      actionhead_mlp_activations: [relu, identity]
+      actionhead_mlp_layer_type: [Linear, Linear]
+      actionhead_mlp_layer_extra_args: [{}, {}]
+      mlp_bias: True
+
+
+inference:
+  inference_only: False
+  # algo_path: None
+  # override_cfg: False

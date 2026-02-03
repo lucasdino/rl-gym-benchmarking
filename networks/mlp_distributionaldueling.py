@@ -91,10 +91,12 @@ class MLP_DistributionalDueling(nn.Module):
         shared_parts = [self._format_layer(layer) for layer in self.shared_net]
         value_parts = [self._format_layer(layer) for layer in self.value_head]
         action_parts = [self._format_layer(layer) for layer in self.action_head]
+        num_params = sum(p.numel() for p in self.parameters())
         msg = f"[Net: {self.cfg.name}] "
         msg += "Shared: " + " -> ".join(shared_parts)
         msg += " | Value: " + " -> ".join(value_parts)
         msg += " | Action: " + " -> ".join(action_parts)
+        msg += f" | Params: {num_params:,}"
         print(msg)
 
     def forward(self, x):

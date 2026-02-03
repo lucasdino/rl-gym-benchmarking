@@ -35,9 +35,10 @@ class BaseAlgorithm(ABC):
 
     @abstractmethod
     def ready_to_update(self) -> bool:
-        """ Simple call to implement in training loop to see if ready to update (e.g., checks if buffer has enough samples / you've exceeded the number of warmup steps) """
+        """ Simple call to implement in training loop to see if ready to update (e.g., checks if buffer has enough samples & you've exceeded the number of warmup steps) """
         ...
 
+    # Non-abstract methods defined at this base-level
     def save(self, path: str) -> None:
         """ Saves your class (e.g., parameters, cfg, etc.). """
         torch.save(self, path)

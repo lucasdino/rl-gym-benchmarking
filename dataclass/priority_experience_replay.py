@@ -62,6 +62,7 @@ class PriorityExperienceReplay(BaseBuffer):
                 return rid
 
     def _flush_rollout(self, env_idx: int) -> BatchedTransition:
+        """ Caching env steps for the entire rollout (flush upon termination) to allow for n-step native sampling. """
         cache = self._rollout_cache.pop(env_idx)
         n = len(cache)
         rollout_id = self._new_rollout_id()

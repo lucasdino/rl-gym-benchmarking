@@ -10,54 +10,18 @@ from trainer.helper import start_plot_server, compute_and_save_aggregated_result
 from trainer.helper.plot_server import LIVE_PLOTS_DIR, CFG_GREEN, COLOR_RESET
 
 
+# ========================================
+# Update the following
+# ========================================
+START_PLOT_SERVER =         True        # If True, launches live plotting of the run
+PLOT_SERVER_GRACE_SECONDS = 3           # Leave as is
+
 # Can either point to a folder with .yamls or to specific .yaml files
 configs = [
-    "configs/discrete_actions/rainbow/dueling_v_dist_lunarlander",
-    # "configs/discrete_actions/rainbow/dueling_v_dist_cartpole",
-    # "configs/discrete_actions/duelingnet/dueling_v_ddqn_cartpole",
-    # "configs/discrete_actions/duelingnet/lunarlander.yaml",
-    # "configs/discrete_actions/dqn/ddqn_v_dqn_cartpole",
-    # "configs/discrete_actions/ddqn/noisynet_ablation",
-    # "configs/discrete_actions/dqn/ddqn_v_dqn_lunarlander",
-    # "configs/discrete_actions/ddqn/per_ablation",
-    # "configs/discrete_actions/ddqn/n_step_ablation",
-    # "configs/discrete_actions/ddqn/noisynet_ablation",
-    # "configs/discrete_actions/ddqn/breakout.yaml",
-    # "configs/discrete_actions/ddqn/lunarlander.yaml",
-    # "configs/discrete_actions/ddqn/cartpole.yaml",
+    # "configs/discrete_actions/rainbow/cartpole.yaml",
+    "configs/discrete_actions/rainbow/breakout.yaml",
 ]
-
-START_PLOT_SERVER = True
-PLOT_SERVER_GRACE_SECONDS = 5
-
-
-def generate_seeds(base_seed: int | None, num_seeds: int) -> list[int]:
-    """
-    Generate list of seeds. If base_seed is set, seeds are deterministic.
-    return
-    """
-    if base_seed is not None:
-        random.seed(base_seed)
-        np.random.seed(base_seed)
-    return [random.randint(0, 2**31 - 1) for _ in range(num_seeds)]
-
-
-def _clear_live_plots_dir() -> None:
-    """
-    Clear live plots directory.
-    return
-    """
-    if not os.path.exists(LIVE_PLOTS_DIR):
-        os.makedirs(LIVE_PLOTS_DIR, exist_ok=True)
-        return
-    for entry in os.listdir(LIVE_PLOTS_DIR):
-        if entry == "index.html":
-            continue
-        path = os.path.join(LIVE_PLOTS_DIR, entry)
-        if os.path.isdir(path):
-            shutil.rmtree(path)
-        else:
-            os.remove(path)
+# ========================================
 
 
 def main():
@@ -82,14 +46,14 @@ def main():
             print(f"{CFG_GREEN}{'='*120}\n# Evaluating on Config: {config:<94} #\n{'='*120}{COLOR_RESET}\n")
             trainer = Trainer(cfg)
             override_cfg = cfg if cfg.inference.override_cfg else None
-            trainer.algo = trainer.algo.load(path = cfg.inference.algo_path, override_cfg = override_cfg)
+            trainer.algo = trainer.algo.load(path=cfg.inference.algo_path, override_cfg=override_cfg)
             trainer.send_networks_to_device()
             trainer.eval(save_video=cfg.train.save_video_at_end)
             print(f"\nEval complete. Took {(time.time() - start_time):.1f}s.\n\n\n")
 
         else:
             num_seeds = cfg.train.num_seeds
-            seeds = generate_seeds(cfg.algo.seed, num_seeds)
+            seeds = _generate_seeds(cfg.algo.seed, num_seeds)
             run_name = cfg.train.run_name if cfg.train.run_name else f"{cfg.env.name}_{cfg.algo.name}"
             run_info = {
                 "config_path": config,
@@ -133,6 +97,40 @@ def main():
                     time.sleep(PLOT_SERVER_GRACE_SECONDS)
             
             print(f"\nTraining complete. Took {(time.time() - start_time):.1f}s.\n\n\n")
+
+
+# ------------------
+# Helpers
+# ------------------
+def _generate_seeds(base_seed: int | None, num_seeds: int) -> list[int]:
+    """
+    Generate list of seeds. If base_seed is set, seeds are deterministic.
+    return
+    """
+    if base_seed is not None:
+        random.seed(base_seed)
+        np.random.seed(base_seed)
+    return [random.randint(0, 2**31 - 1) for _ in range(num_seeds)]
+
+
+def _clear_live_plots_dir() -> None:
+    """
+    Clear live plots directory.
+    return
+    """
+    if not os.path.exists(LIVE_PLOTS_DIR):
+        os.makedirs(LIVE_PLOTS_DIR, exist_ok=True)
+        return
+    for entry in os.listdir(LIVE_PLOTS_DIR):
+        if entry == "index.html":
+            continue
+        path = os.path.join(LIVE_PLOTS_DIR, entry)
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
+
+
 
 if __name__ == "__main__":
     main()

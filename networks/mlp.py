@@ -74,7 +74,8 @@ class MLP(nn.Module):
     def _print_architecture(self) -> None:
         """Print a concise architecture summary."""
         parts = [self._format_layer(layer) for layer in self.net]
-        print(f"[Net: {self.cfg.name}] " + " -> ".join(parts))
+        num_params = sum(p.numel() for p in self.parameters())
+        print(f"[Net: {self.cfg.name}] " + " -> ".join(parts) + f" | Params: {num_params:,}")
 
     def forward(self, x):
         return self.net(x)

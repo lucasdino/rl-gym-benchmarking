@@ -1,21 +1,22 @@
-"""
-Environment setup utilities for different environment types (standard, Atari, etc.)
-"""
+from __future__ import annotations
 
 from typing import Any
 import gymnasium as gym
 import numpy as np
 from ale_py.vector_env import AtariVectorEnv
 
+from gymnasium.wrappers.vector import (
+    NormalizeObservation,
+    NormalizeReward,
+    RecordEpisodeStatistics,
+    ClipReward,
+    DtypeObservation,
+    TransformObservation,
+)
 
-def _env_name_to_rom_id(env_name: str) -> str:
-    """
-    Convert gymnasium-style env name to ALE ROM id.
-    e.g., "Breakout-v5" -> "breakout", "ALE/Breakout-v5" -> "breakout"
-    """
-    name = env_name.replace("ALE/", "")
-    name = name.split("-")[0]
-    return name.lower()
+ALLOWED_ENV_ARGS = {
+    "render_mode",
+}
 
 
 def make_atari_vec_envs(
@@ -29,13 +30,11 @@ def make_atari_vec_envs(
 ) -> AtariVectorEnv:
     """
     Create vectorized Atari environments using ale_py's AtariVectorEnv.
-    
+
     return: AtariVectorEnv with standard Atari preprocessing.
     """
-    rom_id = _env_name_to_rom_id(env_name)
-    
     kwargs = dict(
-        game=rom_id,
+        game=env_name,
         num_envs=num_envs,
         frameskip=4,
         grayscale=True,
@@ -49,14 +48,13 @@ def make_atari_vec_envs(
         episodic_life=False,
         full_action_space=False,
     )
-    
+
     if max_episode_steps is not None:
         kwargs["max_num_frames_per_episode"] = max_episode_steps * 4  # account for frameskip
-    
+
     envs = AtariVectorEnv(**kwargs)
     if render_mode is not None and hasattr(envs, "render_mode"):
         envs.render_mode = render_mode
-    
     return envs
 
 
@@ -70,7 +68,7 @@ def make_standard_vec_envs(
 ) -> gym.vector.VectorEnv:
     """
     Create standard vectorized environments without special preprocessing.
-    
+
     return: VectorEnv
     """
     kwargs = dict(env_args or {})
@@ -87,28 +85,74 @@ def make_standard_vec_envs(
     return envs
 
 
-def make_vec_envs(env_cfg: Any, vectorization_mode: str = "async", render_mode: str | None = None) -> gym.vector.VectorEnv:
+def _is_uint8_image_space(space: gym.Space) -> bool:
+    return (
+        isinstance(space, gym.spaces.Box)
+        and space.dtype == np.uint8
+        and len(space.shape) >= 2
+    )
+
+
+def wrap_vec_envs(envs: gym.vector.VectorEnv, env_cfg: Any, eval: bool = False) -> gym.vector.VectorEnv:
+    """
+    Wrap a VectorEnv with:
+      - episode stats
+      - observation normalization
+      - reward shaping (disabled for eval)
+    """
+    # First record stats in raw
+    if getattr(env_cfg, "record_episode_stats", True):
+        envs = RecordEpisodeStatistics(envs)
+
+    # Obs normalization
+    obs_space = envs.single_observation_space
+    if env_cfg.is_atari or _is_uint8_image_space(obs_space):
+        envs = DtypeObservation(envs, np.float32)
+        # envs = TransformObservation(envs, lambda obs: obs / 255.0)
+    else:
+        if env_cfg.normalize_obs:
+            envs = NormalizeObservation(envs, epsilon=env_cfg.extra.get("obs_norm_eps", 1e-8))
+            envs.update_running_mean = (not eval)
+
+    # Reward normalization
+    if env_cfg.is_atari:
+        if not eval:
+            envs = ClipReward(envs, -1.0, 1.0)   # standard atari clipping of [-1, 1]
+    else:
+        if (not eval) and env_cfg.normalize_reward:
+            envs = NormalizeReward(envs, gamma=env_cfg.extra['gamma'], epsilon=env_cfg.extra.get("rew_norm_eps", 1e-8))
+            envs.update_running_mean = True
+
+    return envs
+
+
+def make_vec_envs(
+    env_cfg: Any,
+    vectorization_mode: str = "async",
+    render_mode: str | None = None,
+    eval: bool = False,
+) -> gym.vector.VectorEnv:
     """
     Factory function to create vectorized environments.
-    
+
     return: VectorEnv (Atari with preprocessing if is_atari=True, else standard)
     """
-    env_args = env_cfg.env_args
+    env_args = {k: v for k, v in env_cfg.extra.items() if k in ALLOWED_ENV_ARGS}
     render_mode = render_mode if render_mode is not None else env_args.get("render_mode", None)
     seed = env_args.get("seed", None)
 
     if env_cfg.is_atari:
-        return make_atari_vec_envs(
+        envs = make_atari_vec_envs(
             env_name=env_cfg.name,
             num_envs=env_cfg.num_envs,
-            stack_size=env_cfg.stack_stamples,
+            stack_size=env_cfg.stack_samples,
             max_episode_steps=env_cfg.max_episode_steps,
             seed=seed,
             render_mode=render_mode,
             vectorization_mode=vectorization_mode,
         )
     else:
-        return make_standard_vec_envs(
+        envs = make_standard_vec_envs(
             env_name=env_cfg.name,
             num_envs=env_cfg.num_envs,
             max_episode_steps=env_cfg.max_episode_steps,
@@ -116,3 +160,5 @@ def make_vec_envs(env_cfg: Any, vectorization_mode: str = "async", render_mode: 
             render_mode=render_mode,
             vectorization_mode=vectorization_mode,
         )
+
+    return wrap_vec_envs(envs, env_cfg=env_cfg, eval=eval)

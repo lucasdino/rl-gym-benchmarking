@@ -19,6 +19,42 @@ from trainer.helper.env_setup import make_vec_envs
 from configs.config import EnvConfig
 
 
+def _make_atari_render_env(env_name: str, num_envs: int) -> Any:
+    """Create a color Atari env for rendering (no grayscale, no stacking)."""
+    from ale_py.vector_env import AtariVectorEnv
+    return AtariVectorEnv(
+        game=env_name,
+        num_envs=num_envs,
+        frameskip=4,
+        grayscale=False,
+        stack_num=1,
+        img_height=84,
+        img_width=84,
+        maxpool=True,
+        reward_clipping=False,
+        noop_max=30,
+        use_fire_reset=True,
+        episodic_life=False,
+        full_action_space=False,
+    )
+
+
+def _extract_atari_color_frames(obs: np.ndarray) -> List[np.ndarray]:
+    """
+    Extract color frames from Atari color env observations.
+    obs: [num_envs, 1, H, W, 3]
+    
+    return: list of [H, W, 3] uint8 frames
+    """
+    frames = []
+    for i in range(obs.shape[0]):
+        frame = obs[i, 0]  # [H, W, 3]
+        if frame.ndim == 2:
+            frame = np.stack([frame, frame, frame], axis=-1)
+        frames.append(frame)
+    return frames
+
+
 def _pad_to_hw(img: np.ndarray, H: int, W: int) -> np.ndarray:
     h, w = img.shape[:2]
     out = np.zeros((H, W, 3), dtype=img.dtype)
@@ -76,6 +112,19 @@ def tile_grid(imgs: List[np.ndarray], grid_hw: Tuple[int, int], pad: int = 2) ->
     return np.concatenate(rows_out, axis=0)
 
 
+def _unwrap_vec_for_render(envs: Any) -> Any:
+    """
+    return
+    Return first wrapper with `call` or `render`.
+    """
+    current = envs
+    while current is not None:
+        if hasattr(current, "call") or hasattr(current, "render"):
+            return current
+        current = getattr(current, "env", None)
+    raise AttributeError("No vector env with render or call")
+
+
 def record_vec_grid_video(
     *,
     env_cfg: EnvConfig,
@@ -100,7 +149,16 @@ def record_vec_grid_video(
     rows, cols = fixed_grid_hw
     num_envs = fixed_num_envs
 
-    envs = make_vec_envs(env_cfg, vectorization_mode=vectorization_mode, render_mode="rgb_array")
+    is_atari = env_cfg.is_atari
+    render_mode = None if is_atari else "rgb_array"
+    envs = make_vec_envs(env_cfg, vectorization_mode=vectorization_mode, render_mode=render_mode)
+
+    # For Atari, create a parallel color env for rendering
+    atari_render_env = None
+    atari_render_obs = None
+    if is_atari:
+        atari_render_env = _make_atari_render_env(env_cfg.name, num_envs)
+        atari_render_obs, _ = atari_render_env.reset(seed=seed)
 
     obs, _ = envs.reset(seed=seed)
 
@@ -108,28 +166,31 @@ def record_vec_grid_video(
     frozen: List[Optional[np.ndarray]] = [None] * num_envs
     frames: List[np.ndarray] = []
 
-    # Loop until every env has finished at least one episode
     while not done.all():
-        sub_frames = envs.call("render")  # list[ndarray] (one per sub-env)
+        if is_atari:
+            sub_frames = _extract_atari_color_frames(atari_render_obs)
+        else:
+            render_env = _unwrap_vec_for_render(envs)
+            if hasattr(render_env, "call"):
+                sub_frames = render_env.call("render")
+            else:
+                sub_frames = render_env.render()
 
-        # Freeze each tile once it finishes; vec envs autoreset otherwise
         tiled_inputs: List[np.ndarray] = []
         for i, f in enumerate(sub_frames):
-            if f is None:
-                # If render returns None, keep frozen frame if available (otherwise placeholder)
-                f = frozen[i] if frozen[i] is not None else None
-
-            if done[i] and frozen[i] is not None:
-                tiled_inputs.append(_apply_done_overlay(frozen[i]))
-            else:
-                if f is not None:
-                    frozen[i] = f
-                    if done[i]:
-                        tiled_inputs.append(_apply_done_overlay(f))
-                    else:
-                        tiled_inputs.append(f)
+            if done[i]:
+                # Already finished - use frozen frame with overlay
+                if frozen[i] is not None:
+                    tiled_inputs.append(_apply_done_overlay(frozen[i]))
                 else:
                     tiled_inputs.append(np.zeros((64, 64, 3), dtype=np.uint8))
+            else:
+                # Still running - update frozen and show live frame
+                if f is not None:
+                    frozen[i] = f
+                    tiled_inputs.append(f)
+                else:
+                    tiled_inputs.append(frozen[i] if frozen[i] is not None else np.zeros((64, 64, 3), dtype=np.uint8))
 
         frames.append(tile_grid(tiled_inputs, grid_hw=grid_hw, pad=pad))
 
@@ -138,7 +199,11 @@ def record_vec_grid_video(
         env_actions = actions_to_env(batched_actions.action)
 
         obs, _, term, trunc, _ = envs.step(env_actions)
+        if atari_render_env is not None:
+            atari_render_obs, _, _, _, _ = atari_render_env.step(env_actions)
         done |= (term | trunc)
 
     envs.close()
+    if atari_render_env is not None:
+        atari_render_env.close()
     return frames

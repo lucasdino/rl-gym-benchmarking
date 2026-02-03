@@ -15,11 +15,6 @@ from trainer.helper import ResultLogger, RunResults, record_vec_grid_video, make
 
 class Trainer():
     def __init__(self, cfg, seed: int | None = None, seed_idx: int = 0):
-        """
-        seed: override seed for this run (used in multi-seed runs)
-        seed_idx: index of this seed in the list (for labeling)
-        return
-        """
         self.cfg = cfg
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.seed_idx = seed_idx
@@ -28,8 +23,8 @@ class Trainer():
         self._set_global_seeds(self.current_seed)
 
         start_time = time.time()
-        self.train_envs = make_vec_envs(cfg.env, vectorization_mode="async")
-        self.eval_envs = make_vec_envs(cfg.env, vectorization_mode="sync")
+        self.train_envs = make_vec_envs(cfg.env, vectorization_mode="async", eval=False)
+        self.eval_envs = make_vec_envs(cfg.env, vectorization_mode="sync", eval=True)
         self.algo = get_algorithm(cfg.algo.name)(cfg, self.train_envs.single_observation_space, self.train_envs.single_action_space, self.device)
         print(f"Successfully initialized env + algo in {(time.time() - start_time):.2f}s")
 

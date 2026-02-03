@@ -31,7 +31,7 @@ class DDQN(BaseAlgorithm):
     # Instantiation Helpers
     # =========================================
     def _instantiate_buffer(self):
-        """ Set up replay buffer / PER. """
+        """ Set up replay buffer / Priority Experience Replay. """
         buffer_type = self.cfg.algo.extra["buffer_type"]
         buffer_cls = BUFFER_MAPPING[buffer_type]
         self.replay_buffer = buffer_cls(self.cfg.algo.extra["buffer_size"], self.cfg)

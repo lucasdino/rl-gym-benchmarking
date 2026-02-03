@@ -1,0 +1,78 @@
+env:
+  name:                 CartPole-v1
+  num_envs:             16
+  max_episode_steps:    500    # @ 30 fps
+  normalize_obs:        True
+  normalize_reward:     True
+  is_atari:             False
+  stack_samples:        4
+
+
+algo:
+  name:                 ddqn
+  seed:                 42     # Comment out if you want random seeding        
+  gamma:                0.99
+  lr_start:             4e-4   # Standard is 2.5e-4  
+  lr_end:               2e-4
+  lr_warmup_env_steps:  20000
+  batch_size:           32       
+  n_step:               8      # n-step TD estimates
+  update_every_steps:   1
+  use_action_for_steps_train:   1
+  use_action_for_steps_eval:    1
+  buffer_size:          100000
+  buffer_type:          priority_experience_replay     # {priority_experience_replay, replay_buffer}
+  warmup_buffer_size:   5000
+  overwrite_target_net_grad_updates:  256   # In terms of 'number grad updates', not samples seen. Num steps would be this * num_envs * update_every_steps
+
+
+train:
+  run_name:         cartpole_ddqn_v1
+  total_env_steps:  200000
+  log_interval:     20000
+  eval_interval:    20000
+  eval_envs:        64
+  logging_method:   [console]
+
+  num_seeds:            5
+  console_log_train:    True
+  threshold_exit_training_on_eval_score: 500
+  # wandb_project: Recommend set this in config.py
+  wandb_group:          cartpole_ddqn
+  save_result:          True
+  save_video_at_end:    False
+  save_algo_at_end:     False
+
+
+sampler:
+  name: epsilon_greedy
+  starting_epsilon: 1.0
+  ending_epsilon: 0.1
+  warmup_steps: 0
+  decay_until_step: 150000
+
+
+networks:
+  q_1:
+    network_type: mlp
+    network_args:
+      mlp_dims: ["InDims", 32, 32, "OutDims"]
+      mlp_activations: [relu, relu, identity]
+      mlp_bias: True
+      mlp_layer_type: [Linear, Linear, Linear]
+      mlp_layer_extra_args: [{}, {}, {}]
+
+  q_2:
+    network_type: mlp
+    network_args:
+      mlp_dims: ["InDims", 32, 32, "OutDims"]
+      mlp_activations: [relu, relu, identity]
+      mlp_bias: True
+      mlp_layer_type: [Linear, Linear, Linear]
+      mlp_layer_extra_args: [{}, {}, {}]
+
+
+inference:
+  inference_only: False
+  # algo_path: None
+  # override_cfg: False
