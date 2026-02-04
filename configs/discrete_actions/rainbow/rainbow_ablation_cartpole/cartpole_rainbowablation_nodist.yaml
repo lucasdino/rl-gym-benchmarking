@@ -9,7 +9,7 @@ env:
 
 
 algo:
-  name:                 duelingnet
+  name:                 ddqn
   seed:                 42     # Comment out if you want random seeding        
   gamma:                0.95
   lr_start:             4e-4   # Standard is 2.5e-4  

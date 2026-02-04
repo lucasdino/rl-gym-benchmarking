@@ -19,7 +19,7 @@ PLOT_SERVER_GRACE_SECONDS = 3           # Leave as is
 # Can either point to a folder with .yamls or to specific .yaml files
 configs = [
     # "configs/discrete_actions/rainbow/cartpole.yaml",
-    "configs/discrete_actions/rainbow/breakout.yaml",
+    "configs/discrete_actions/rainbow/rainbow_ablation_cartpole",
 ]
 # ========================================
 

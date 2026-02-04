@@ -3,6 +3,7 @@
 # Local folders
 sandbox/
 saved_data/
+archive/
 
 # venvs / setup
 .venv/
