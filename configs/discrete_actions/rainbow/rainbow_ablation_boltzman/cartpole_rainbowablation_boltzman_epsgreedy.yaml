@@ -16,7 +16,7 @@ algo:
   lr_end:               2e-4
   lr_warmup_env_steps:  100000
   batch_size:           32       
-  n_step:               1      # n-step TD estimates
+  n_step:               8      # n-step TD estimates
   update_every_steps:   1
   use_action_for_steps_train:   1
   use_action_for_steps_eval:    1
@@ -30,7 +30,7 @@ algo:
 
 
 train:
-  run_name:         cartpole_rainbowablation_noper
+  run_name:         cartpole_rainbowablation_boltzman_epsgreedy
   total_env_steps:  200000
   log_interval:     20000
   eval_interval:    20000
@@ -48,11 +48,11 @@ train:
 
 
 sampler:
-  name: greedy
-  # starting_epsilon: 1.0
-  # ending_epsilon: 0.1
-  # warmup_steps: 0
-  # decay_until_step: 800000
+  name: epsilon_greedy
+  starting_epsilon: 1.0
+  ending_epsilon: 0.1
+  warmup_steps: 0
+  decay_until_step: 150000
 
 
 networks:
@@ -65,12 +65,12 @@ networks:
       shared_mlp_layer_extra_args: [{}]
       valuehead_mlp_dims: ["InDims", 32, "OutDims"]
       valuehead_mlp_activations: [relu, identity]
-      valuehead_mlp_layer_type: [NoisyLinear, NoisyLinear]
-      valuehead_mlp_layer_extra_args: [{sigma0: 0.7}, {sigma0: 0.7}]
+      valuehead_mlp_layer_type: [Linear, Linear]
+      valuehead_mlp_layer_extra_args: [{}, {}]
       actionhead_mlp_dims: ["InDims", 32, "OutDims"]
       actionhead_mlp_activations: [relu, identity]
-      actionhead_mlp_layer_type: [NoisyLinear, NoisyLinear]
-      actionhead_mlp_layer_extra_args: [{sigma0: 0.7}, {sigma0: 0.7}]
+      actionhead_mlp_layer_type: [Linear, Linear]
+      actionhead_mlp_layer_extra_args: [{}, {}]
       mlp_bias: True
 
   q_2:
@@ -82,12 +82,12 @@ networks:
       shared_mlp_layer_extra_args: [{}]
       valuehead_mlp_dims: ["InDims", 32, "OutDims"]
       valuehead_mlp_activations: [relu, identity]
-      valuehead_mlp_layer_type: [NoisyLinear, NoisyLinear]
-      valuehead_mlp_layer_extra_args: [{sigma0: 0.7}, {sigma0: 0.7}]
+      valuehead_mlp_layer_type: [Linear, Linear]
+      valuehead_mlp_layer_extra_args: [{}, {}]
       actionhead_mlp_dims: ["InDims", 32, "OutDims"]
       actionhead_mlp_activations: [relu, identity]
-      actionhead_mlp_layer_type: [NoisyLinear, NoisyLinear]
-      actionhead_mlp_layer_extra_args: [{sigma0: 0.7}, {sigma0: 0.7}]
+      actionhead_mlp_layer_type: [Linear, Linear]
+      actionhead_mlp_layer_extra_args: [{}, {}]
       mlp_bias: True
 
 

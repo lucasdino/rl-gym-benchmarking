@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Live Plots</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #0a0a0a; color: #0f0; padding: 8px; }
+    h1 { font-size: 12px; text-align: center; border: 1px solid #0f0; padding: 4px; margin-bottom: 8px; }
+    h2 { font-size: 11px; padding: 4px 8px; margin: 12px 0 6px 0; }
+    h2.aggregated { background: #1a1040; color: #9b59b6; border: 1px solid #9b59b6; }
+    h2.multi-seed { background: #2a1020; color: #f5a; border: 1px solid #f5a; }
+    h2.current-run { background: #102a10; color: #0f0; border: 1px solid #0f0; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .item { background: #111; padding: 4px; }
+    .item.aggregated { border: 1px dashed #9b59b6; }
+    .item.persistent { border: 1px dashed #f5a; }
+    .item.transient { border: 1px dashed #0f0; }
+    .title { font-size: 10px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .title.aggregated { color: #9b59b6; }
+    .title.persistent { color: #f5a; }
+    .title.transient { color: #0f0; }
+    .item img { width: 100%; height: auto; display: block; }
+    .st { font-size: 9px; color: #060; text-align: right; margin-top: 6px; }
+    .empty { color: #060; text-align: center; padding: 12px; }
+  </style>
+</head>
+<body>
+  <h1>+--[ LIVE PLOTS ]--+</h1>
+  <h2 class="aggregated">[ AGGREGATED (FINAL) ]</h2>
+  <div id="aggregated" class="grid"></div>
+  <h2 class="multi-seed">[ MULTI-SEED ]</h2>
+  <div id="persistent" class="grid"></div>
+  <h2 class="current-run">[ CURRENT SEED ]</h2>
+  <div id="transient" class="grid"></div>
+  <div class="st" id="st">--</div>
+  <script>
+    let ts = null;
+    async function go() {
+      try {
+        const r = await fetch('manifest.json?_=' + Date.now());
+        const d = await r.json();
+        if (d.timestamp !== ts) {
+          ts = d.timestamp;
+          const persistentCats = new Set(d.persistent_categories || []);
+          let aggregatedHtml = '';
+          let persistentHtml = '';
+          let transientHtml = '';
+          for (const [cat, files] of Object.entries(d.plots || {})) {
+            const isAggregatedCategory = cat.startsWith('aggregated_');
+            const isPersistent = persistentCats.has(cat) && !isAggregatedCategory;
+            for (const f of files) {
+              const base = f.split('/').pop().split('?')[0];
+              const isAggregated = isAggregatedCategory || /_aggregated\.png$/i.test(base);
+              const title = base.replace(/_aggregated\.png$/i, '').replace(/_line\.png$/i, '').replace(/\.png$/i, '');
+              let itemClass, html;
+              if (isAggregated) {
+                itemClass = 'aggregated';
+                html = '<div class="item ' + itemClass + '"><div class="title ' + itemClass + '">' + title + ' (Combined)</div><img src="' + f + '?_=' + Date.now() + '"></div>';
+                aggregatedHtml += html;
+              } else if (isPersistent) {
+                itemClass = 'persistent';
+                html = '<div class="item ' + itemClass + '"><div class="title ' + itemClass + '">' + title + '</div><img src="' + f + '?_=' + Date.now() + '"></div>';
+                persistentHtml += html;
+              } else {
+                itemClass = 'transient';
+                html = '<div class="item ' + itemClass + '"><div class="title ' + itemClass + '">' + title + '</div><img src="' + f + '?_=' + Date.now() + '"></div>';
+                transientHtml += html;
+              }
+            }
+          }
+          document.getElementById('aggregated').innerHTML = aggregatedHtml || '<div class="empty">[ no aggregated plots yet ]</div>';
+          document.getElementById('persistent').innerHTML = persistentHtml || '<div class="empty">[ no multi-seed plots yet ]</div>';
+          document.getElementById('transient').innerHTML = transientHtml || '<div class="empty">[ no current run plots yet ]</div>';
+          document.getElementById('st').textContent = new Date().toLocaleTimeString();
+        }
+      } catch (e) {}
+      setTimeout(go, 2000);
+    }
+    go();
+  </script>
+</body>
+</html>

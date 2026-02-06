@@ -39,6 +39,15 @@ class BaseAlgorithm(ABC):
         ...
 
     # Non-abstract methods defined at this base-level
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop("replay_buffer", None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.replay_buffer = None
+
     def save(self, path: str) -> None:
         """ Saves your class (e.g., parameters, cfg, etc.). """
         torch.save(self, path)
@@ -51,4 +60,5 @@ class BaseAlgorithm(ABC):
             assert isinstance(algo, cls), f"Loaded algo type {type(algo)} does not match expected {cls}"
         if override_cfg is not None:
             algo.cfg = override_cfg
+        algo._instantiate_buffer()
         return algo

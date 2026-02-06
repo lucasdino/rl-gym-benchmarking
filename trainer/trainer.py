@@ -213,6 +213,10 @@ class Trainer():
     def send_networks_to_device(self):
         for model in self.algo.networks.values():
             model.to(self.device)
+        self.algo.device = self.device
+        for attr in ("atom_values",):
+            if hasattr(self.algo, attr):
+                setattr(self.algo, attr, getattr(self.algo, attr).to(self.device))
 
     def _get_run_name(self) -> str:
         if self.cfg.train.run_name:

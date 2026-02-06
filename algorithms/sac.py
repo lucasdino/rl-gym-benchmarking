@@ -3,11 +3,13 @@ import torch.optim as optim
 
 from typing import Any
 
-from networks.build_network import build_network
 from algorithms.base import BaseAlgorithm
-from dataclass.replay_buffer import ReplayBuffer
+from algorithms.helper import ActionSampler, build_cosine_warmup_schedulers
+from networks.build_network import build_network
+from dataclass import BUFFER_MAPPING
 from dataclass.primitives import BatchedActionOutput, BatchedTransition
 from configs.config import TrainConfig
+from trainer.helper import RunResults
 
 
 class SoftActorCritic(BaseAlgorithm):
@@ -21,7 +23,7 @@ class SoftActorCritic(BaseAlgorithm):
             act_space = act_space,
             device = device
         )
-        self.replay_buffer = ReplayBuffer(cfg.algo.extra["buffer_size"], cfg)
+        self._instantiate_buffer()
         self._instantiate_networks()
         self._instantiate_optimizer()
 
@@ -29,6 +31,9 @@ class SoftActorCritic(BaseAlgorithm):
     # =========================================
     # Instantiation Helpers
     # =========================================
+    def _instantiate_buffer(self):
+        self.replay_buffer = ReplayBuffer(self.cfg.algo.extra["buffer_size"], self.cfg)
+
     def _instantiate_networks(self):
         """ Helper function to set-up all our networks """
         self.networks = {}

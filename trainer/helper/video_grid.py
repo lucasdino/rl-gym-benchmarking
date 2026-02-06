@@ -198,9 +198,10 @@ def record_vec_grid_video(
         batched_actions = algo.act(obs_t, eval_mode=True)
         env_actions = actions_to_env(batched_actions.action)
 
-        obs, _, term, trunc, _ = envs.step(env_actions)
+        obs, _, term, trunc, infos = envs.step(env_actions)
         if atari_render_env is not None:
             atari_render_obs, _, _, _, _ = atari_render_env.step(env_actions)
+
         done |= (term | trunc)
 
     envs.close()

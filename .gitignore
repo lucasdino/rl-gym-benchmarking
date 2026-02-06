@@ -2,8 +2,14 @@
 
 # Local folders
 sandbox/
-saved_data/
 archive/
+
+# Saving folders
+saved_data/final_run_videos
+saved_data/saved_algos
+saved_data/saved_plots
+saved_data/saved_videos
+saved_data/plot_processing/processed_plots
 
 # venvs / setup
 .venv/

@@ -4,9 +4,9 @@ import torch.nn.functional as F
 
 from typing import Any
 
-from networks.build_network import build_network
-from networks.helper import ActionSampler, build_cosine_warmup_schedulers
 from algorithms.base import BaseAlgorithm
+from algorithms.helper import ActionSampler, build_cosine_warmup_schedulers
+from networks.build_network import build_network
 from dataclass import BUFFER_MAPPING
 from dataclass.primitives import BatchedActionOutput, BatchedTransition
 from configs.config import TrainConfig
@@ -80,7 +80,6 @@ class Distributional_QN(BaseAlgorithm):
         self.delta_z = (self.v_max - self.v_min) / (self.num_atoms - 1)
 
 
-
     # =========================================
     # API Functions
     # =========================================
@@ -151,7 +150,6 @@ class Distributional_QN(BaseAlgorithm):
         
         # Sample from buffer
         self.step_info["update_num"] += 1
-        n_step = self.cfg.algo.n_step
         gamma = self.cfg.algo.gamma
         obs, actions, n_rewards, next_obs, terminated, truncated, act_info, info, weights, actual_n = self.replay_buffer.sample(
             self.cfg.algo.batch_size, self.device

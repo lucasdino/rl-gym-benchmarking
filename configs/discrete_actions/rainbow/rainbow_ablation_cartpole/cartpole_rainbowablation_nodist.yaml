@@ -56,15 +56,15 @@ networks:
   q_1:
     network_type: duelingnet
     network_args:
-      shared_mlp_dims: ["InDims", 128]
+      shared_mlp_dims: ["InDims", 32]
       shared_mlp_activations: [relu]
       shared_mlp_layer_type: [Linear]
       shared_mlp_layer_extra_args: [{}]
-      valuehead_mlp_dims: ["InDims", 128, "OutDims"]
+      valuehead_mlp_dims: ["InDims", 32, "OutDims"]
       valuehead_mlp_activations: [relu, identity]
       valuehead_mlp_layer_type: [NoisyLinear, NoisyLinear]
       valuehead_mlp_layer_extra_args: [{sigma0: 0.7}, {sigma0: 0.7}]
-      actionhead_mlp_dims: ["InDims", 128, "OutDims"]
+      actionhead_mlp_dims: ["InDims", 32, "OutDims"]
       actionhead_mlp_activations: [relu, identity]
       actionhead_mlp_layer_type: [NoisyLinear, NoisyLinear]
       actionhead_mlp_layer_extra_args: [{sigma0: 0.7}, {sigma0: 0.7}]
@@ -73,15 +73,15 @@ networks:
   q_2:
     network_type: duelingnet
     network_args:
-      shared_mlp_dims: ["InDims", 128]
+      shared_mlp_dims: ["InDims", 32]
       shared_mlp_activations: [relu]
       shared_mlp_layer_type: [Linear]
       shared_mlp_layer_extra_args: [{}]
-      valuehead_mlp_dims: ["InDims", 128, "OutDims"]
+      valuehead_mlp_dims: ["InDims", 32, "OutDims"]
       valuehead_mlp_activations: [relu, identity]
       valuehead_mlp_layer_type: [NoisyLinear, NoisyLinear]
       valuehead_mlp_layer_extra_args: [{sigma0: 0.7}, {sigma0: 0.7}]
-      actionhead_mlp_dims: ["InDims", 128, "OutDims"]
+      actionhead_mlp_dims: ["InDims", 32, "OutDims"]
       actionhead_mlp_activations: [relu, identity]
       actionhead_mlp_layer_type: [NoisyLinear, NoisyLinear]
       actionhead_mlp_layer_extra_args: [{sigma0: 0.7}, {sigma0: 0.7}]

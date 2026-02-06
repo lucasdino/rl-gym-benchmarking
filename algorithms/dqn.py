@@ -4,9 +4,9 @@ import torch.nn.functional as F
 
 from typing import Any
 
-from networks.build_network import build_network
-from networks.helper import ActionSampler, build_cosine_warmup_schedulers
 from algorithms.base import BaseAlgorithm
+from algorithms.helper import ActionSampler, build_cosine_warmup_schedulers
+from networks.build_network import build_network
 from dataclass import BUFFER_MAPPING
 from dataclass.primitives import BatchedActionOutput, BatchedTransition
 from configs.config import TrainConfig
@@ -129,7 +129,6 @@ class DQN(BaseAlgorithm):
             self._copy_q1_to_q2()
 
         self.step_info["update_num"] += 1
-        n_step = self.cfg.algo.n_step
         gamma = self.cfg.algo.gamma
         obs, actions, n_rewards, next_obs, terminated, truncated, act_info, info, weights, actual_n = self.replay_buffer.sample(
             self.cfg.algo.batch_size, self.device
@@ -139,15 +138,14 @@ class DQN(BaseAlgorithm):
         actions = actions.long()
         n_rewards = n_rewards.float()
 
-        # Bootstrap using your target net: max Q_2(s', a). This is what DDQN improves upon
+        # Bootstrap using your target net: max Q_2(s', a). DDQN improves upon this by choosing your action greedily based on Q_1 then getting action_values_target based on the valuation of that in Q_2
         with torch.no_grad():
-            action_values_target = self.networks["q_2"](next_obs).max(dim=1, keepdim=True).values      # B x 1
+            action_values_target = self.networks["q_2"](next_obs).max(dim=1, keepdim=True).values       # B x 1
 
         # Compute n-step bootstrapped values: R_n + gamma^n * Q(s_{t+n}, a*)
-        # done = (terminated | truncated).float()
         done = terminated.float()
-        gamma_n = (gamma ** actual_n.float())  # B x 1
-        target_values = n_rewards + gamma_n * (1.0 - done) * action_values_target   # B x 1
+        gamma_n = (gamma ** actual_n.float())                                                           # B x 1
+        target_values = n_rewards + gamma_n * (1.0 - done) * action_values_target                       # B x 1
 
         # Optimize
         q_values = self.networks['q_1'](obs)
@@ -155,18 +153,16 @@ class DQN(BaseAlgorithm):
         td_errors = (target_values - q_taken).detach()
         per_sample = F.smooth_l1_loss(q_taken, target_values, reduction="none").squeeze(-1)
         loss = (weights * per_sample).mean()
-        residual = td_errors.abs().flatten().tolist()
-
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.networks["q_1"].parameters(), max_norm=10.0)
-        
-        current_lr = self.lr_schedulers["q_1"].get_last_lr()
         self.optimizers['q_1'].step()
+        
+        # Various clean-up + Logging
         current_env_steps = int(self.step_info["rollout_steps"])
-        self.lr_schedulers['q_1'].step(current_env_steps)
-
-        # need to make this call in case we're using PER (update td residuals for priority)
-        self.replay_buffer.update(td_errors, step=current_env_steps)   
+        current_lr = self.lr_schedulers["q_1"].get_last_lr()
+        self.lr_schedulers['q_1'].step(current_env_steps)       
+        residual = td_errors.abs().flatten().tolist()
+        self.replay_buffer.update(td_errors, step=current_env_steps)            # Necessary to pass info back to buffer if using PER (i.e., update priority)
 
         update_results = [
             RunResults("Loss", loss.mean().item(), "batched_mean", category="loss", write_to_file=True, smoothing=False, aggregation_steps=50),
