@@ -1,58 +1,45 @@
 """
-trainer/video_grid.py
-
-Record a tiled (e.g. 4x4) MP4 from a Gymnasium vector environment by:
-- creating a VecEnv with render_mode="rgb_array"
-- rendering each sub-env each step via envs.call("render")
-- freezing tiles after an env finishes its first episode (VecEnv autoreset would otherwise restart it)
-- tiling frames into a grid and returning the mosaic frame list
+Record a tiled grid MP4 from a Gymnasium vector environment.
+Freezes tiles after their first episode, applies a done overlay,
+and returns the mosaic frame list.
 """
 
 from __future__ import annotations
 
 from typing import Callable, Optional, Tuple, List, Any
 import numpy as np
-import gymnasium as gym
 from dataclasses import replace
 
-from trainer.helper.env_setup import make_vec_envs
+from trainer.helper.env_setup import make_vec_envs, make_atari_vec_envs
 from configs.config import EnvConfig
 
 
-def _make_atari_render_env(env_name: str, num_envs: int) -> Any:
-    """Create a color Atari env for rendering (no grayscale, no stacking)."""
-    from ale_py.vector_env import AtariVectorEnv
-    return AtariVectorEnv(
-        game=env_name,
-        num_envs=num_envs,
-        frameskip=4,
-        grayscale=False,
-        stack_num=1,
-        img_height=84,
-        img_width=84,
-        maxpool=True,
-        reward_clipping=False,
-        noop_max=30,
-        use_fire_reset=True,
-        episodic_life=False,
-        full_action_space=False,
-    )
+def _make_atari_seeds(seed: int, num_envs: int) -> np.ndarray:
+    base = int(seed) % 2_147_483_647
+    return ((base + np.arange(num_envs, dtype=np.int64)) % 2_147_483_647).astype(np.int32)
 
 
-def _extract_atari_color_frames(obs: np.ndarray) -> List[np.ndarray]:
+def _rgb_to_grayscale(rgb_obs: np.ndarray) -> np.ndarray:
     """
-    Extract color frames from Atari color env observations.
-    obs: [num_envs, 1, H, W, 3]
-    
+    ALE NTSC/BT.601 grayscale: round(0.2989*R + 0.5870*G + 0.1140*B)
+    rgb_obs: [num_envs, stack, H, W, 3] uint8
+
+    return: [num_envs, stack, H, W] uint8
+    """
+    r = rgb_obs[..., 0].astype(np.float64)
+    g = rgb_obs[..., 1].astype(np.float64)
+    b = rgb_obs[..., 2].astype(np.float64)
+    return np.round(0.2989 * r + 0.5870 * g + 0.1140 * b).astype(np.uint8)
+
+
+def _extract_atari_rgb_frames(obs: np.ndarray) -> List[np.ndarray]:
+    """
+    Extract last frame from stacked RGB Atari obs.
+    obs: [num_envs, stack, H, W, 3]
+
     return: list of [H, W, 3] uint8 frames
     """
-    frames = []
-    for i in range(obs.shape[0]):
-        frame = obs[i, 0]  # [H, W, 3]
-        if frame.ndim == 2:
-            frame = np.stack([frame, frame, frame], axis=-1)
-        frames.append(frame)
-    return frames
+    return [obs[i, -1] for i in range(obs.shape[0])]
 
 
 def _pad_to_hw(img: np.ndarray, H: int, W: int) -> np.ndarray:
@@ -132,79 +119,82 @@ def record_vec_grid_video(
     to_tensor_obs: Callable[[np.ndarray], Any],
     actions_to_env: Callable[[Any], np.ndarray],
     grid_hw: Tuple[int, int] = (4, 4),
-    seed: Optional[int] = None,
+    seed: int | None = None,
     pad: int = 2,
     vectorization_mode: str = "sync",
 ) -> List[np.ndarray]:
     """
     Returns: list of mosaic frames (H x W x 3 uint8).
-
-    algo must expose: algo.act(obs_tensor, eval_mode=True) -> object with .action tensor
-    to_tensor_obs must convert numpy obs -> torch tensor on correct device/dtype
-    actions_to_env must convert action tensor -> numpy actions suitable for env.step
     """
-    fixed_num_envs = 16
-    fixed_grid_hw = (4, 4)
-    env_cfg = replace(env_cfg, num_envs=fixed_num_envs)
-    rows, cols = fixed_grid_hw
-    num_envs = fixed_num_envs
-
+    rows, cols = grid_hw
+    num_envs = rows * cols
+    env_cfg = replace(env_cfg, num_envs=num_envs)
     is_atari = env_cfg.is_atari
-    render_mode = None if is_atari else "rgb_array"
-    envs = make_vec_envs(env_cfg, vectorization_mode=vectorization_mode, render_mode=render_mode)
 
-    # For Atari, create a parallel color env for rendering
-    atari_render_env = None
-    atari_render_obs = None
     if is_atari:
-        atari_render_env = _make_atari_render_env(env_cfg.name, num_envs)
-        atari_render_obs, _ = atari_render_env.reset(seed=seed)
+        envs = make_atari_vec_envs(
+            env_name=env_cfg.name, num_envs=num_envs,
+            stack_size=env_cfg.stack_samples, grayscale=False,
+            max_episode_steps=env_cfg.max_episode_steps,
+        )
+        seeds = _make_atari_seeds(seed, num_envs) if seed is not None else None
+        obs, info = envs.reset(seed=seeds)
+        prev_lives = info["lives"].copy()
 
-    obs, _ = envs.reset(seed=seed)
+        # Find FIRE in minimal action set (not always index 1)
+        from ale_py import Action as AleAction
+        action_set = envs.ale.get_action_set()
+        fire_idx = None
+        for idx, a in enumerate(action_set):
+            if a == AleAction.FIRE:
+                fire_idx = idx
+                break
+    else:
+        envs = make_vec_envs(env_cfg, vectorization_mode=vectorization_mode, render_mode="rgb_array", eval=True)
+        obs, _ = envs.reset(seed=seed)
+        prev_lives = None
 
     done = np.zeros(num_envs, dtype=bool)
     frozen: List[Optional[np.ndarray]] = [None] * num_envs
     frames: List[np.ndarray] = []
+    needs_fire = np.zeros(num_envs, dtype=bool)
 
     while not done.all():
         if is_atari:
-            sub_frames = _extract_atari_color_frames(atari_render_obs)
+            sub_frames = _extract_atari_rgb_frames(obs)
         else:
-            render_env = _unwrap_vec_for_render(envs)
-            if hasattr(render_env, "call"):
-                sub_frames = render_env.call("render")
-            else:
-                sub_frames = render_env.render()
+            re = _unwrap_vec_for_render(envs)
+            sub_frames = re.call("render") if hasattr(re, "call") else re.render()
 
         tiled_inputs: List[np.ndarray] = []
         for i, f in enumerate(sub_frames):
             if done[i]:
-                # Already finished - use frozen frame with overlay
-                if frozen[i] is not None:
-                    tiled_inputs.append(_apply_done_overlay(frozen[i]))
-                else:
-                    tiled_inputs.append(np.zeros((64, 64, 3), dtype=np.uint8))
+                tiled_inputs.append(_apply_done_overlay(frozen[i]) if frozen[i] is not None else np.zeros((64, 64, 3), dtype=np.uint8))
             else:
-                # Still running - update frozen and show live frame
                 if f is not None:
-                    frozen[i] = f
-                    tiled_inputs.append(f)
-                else:
-                    tiled_inputs.append(frozen[i] if frozen[i] is not None else np.zeros((64, 64, 3), dtype=np.uint8))
+                    frozen[i] = f.copy()
+                tiled_inputs.append(f if f is not None else (frozen[i] if frozen[i] is not None else np.zeros((64, 64, 3), dtype=np.uint8)))
 
         frames.append(tile_grid(tiled_inputs, grid_hw=grid_hw, pad=pad))
 
-        obs_t = to_tensor_obs(obs)
-        batched_actions = algo.act(obs_t, eval_mode=True)
-        env_actions = actions_to_env(batched_actions.action)
+        policy_obs = _rgb_to_grayscale(obs) if is_atari else obs
+        env_actions = actions_to_env(algo.act(to_tensor_obs(policy_obs), eval_mode=True).action)
 
-        obs, _, term, trunc, infos = envs.step(env_actions)
-        if atari_render_env is not None:
-            atari_render_obs, _, _, _, _ = atari_render_env.step(env_actions)
+        # After a life loss some games wait for FIRE to continue
+        if is_atari and fire_idx is not None and needs_fire.any():
+            env_actions[needs_fire & ~done] = fire_idx
+            needs_fire[:] = False
 
-        done |= (term | trunc)
+        obs, _, term, trunc, info = envs.step(env_actions)
+
+        if is_atari:
+            lives = info["lives"]
+            needs_fire = (lives < prev_lives) & (lives > 0) & ~done
+            episode_ended = ((prev_lives > 0) & (lives == 0)) | (lives > prev_lives)
+            done |= (episode_ended | trunc)
+            prev_lives = lives.copy()
+        else:
+            done |= (term | trunc)
 
     envs.close()
-    if atari_render_env is not None:
-        atari_render_env.close()
     return frames

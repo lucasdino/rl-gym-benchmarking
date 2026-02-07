@@ -41,6 +41,17 @@ class PriorityExperienceReplay(BaseBuffer):
     def _allocate_buffer(self, template: torch.Tensor) -> torch.Tensor:
         return torch.empty((self.buffer_length, *template.shape[1:]), dtype=template.dtype, device=template.device)
 
+    def _store_obs(self, obs: torch.Tensor) -> torch.Tensor:
+        if self.cfg.env.is_atari and self.cfg.env.buffer_atari_as_uint8:
+            if obs.dtype != torch.uint8:
+                return obs.clamp(0, 255).to(torch.uint8)
+        return obs
+
+    def _load_obs(self, obs: torch.Tensor) -> torch.Tensor:
+        if self.cfg.env.is_atari and self.cfg.env.buffer_atari_as_uint8 and obs.dtype == torch.uint8:
+            return obs.float()
+        return obs
+
     def _initialize_from_transition(self, transition: BatchedTransition) -> None:
         self._obs = self._allocate_buffer(transition.obs)
         self._act_action = self._allocate_buffer(transition.act.action)
@@ -126,6 +137,17 @@ class PriorityExperienceReplay(BaseBuffer):
     # ===================================
     def add(self, transition: BatchedTransition) -> list[BatchedTransition]:
         """Returns list of completed episode transitions (may be empty)."""
+        obs = self._store_obs(transition.obs)
+        next_obs = self._store_obs(transition.next_obs)
+        transition = BatchedTransition(
+            obs=obs,
+            act=transition.act,
+            reward=transition.reward,
+            next_obs=next_obs,
+            terminated=transition.terminated,
+            truncated=transition.truncated,
+            info=transition.info,
+        )
         if not self._initialized:
             self._initialize_from_transition(transition)
 
@@ -137,8 +159,8 @@ class PriorityExperienceReplay(BaseBuffer):
             if i not in self._rollout_cache:
                 self._rollout_cache[i] = []
             self._rollout_cache[i].append({
-                "obs": transition.obs[i].clone(), "act_action": transition.act.action[i].clone(),
-                "reward": transition.reward[i].clone(), "next_obs": transition.next_obs[i].clone(),
+                "obs": obs[i].clone(), "act_action": transition.act.action[i].clone(),
+                "reward": transition.reward[i].clone(), "next_obs": next_obs[i].clone(),
                 "terminated": transition.terminated[i].clone(), "truncated": transition.truncated[i].clone(),
                 "act_info": {k: v[i].clone() for k, v in transition.act.info.items()} if transition.act.info else None,
                 "info": {k: v[i].clone() for k, v in transition.info.items()} if transition.info else None,
@@ -164,6 +186,8 @@ class PriorityExperienceReplay(BaseBuffer):
         weights = weights / weights.max()
 
         obs, actions, n_rewards, next_obs, terminated, truncated, actual_n = self._build_n_step_vectorized(indices, self._n_step, self._gamma)
+        obs = self._load_obs(obs)
+        next_obs = self._load_obs(next_obs)
         act_info = {k: v[indices].to(device) for k, v in self._act_info.items()} if self._act_info else None
         info = {k: v[indices].to(device) for k, v in self._info.items()} if self._info else None
 

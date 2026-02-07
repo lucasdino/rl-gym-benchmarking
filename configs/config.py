@@ -10,6 +10,7 @@ class EnvConfig:
     normalize_obs:      bool = True        # Normalize observations
     normalize_reward:   bool = True        # Normalize rewards (if Atari, this leads to clipping; otherwise typicaly normalization)
     is_atari:           bool = False
+    buffer_atari_as_uint8: bool = True
     stack_samples:      int = 4            # Only applies to Atari (typically you want to stack 4 frames)
     extra:              Dict[str, Any] = field(default_factory=dict)
 
@@ -114,6 +115,7 @@ ENV_KEYS = {
     "normalize_obs",
     "normalize_reward",
     "is_atari",
+    "buffer_atari_as_uint8",
     "stack_samples",
 }
 ALGO_KEYS = {

@@ -36,6 +36,7 @@ def load_yaml_config(path: str) -> TrainConfig:
         normalize_obs =     bool(raw_env.get("normalize_obs", EnvConfig.normalize_obs)),
         normalize_reward =  bool(raw_env.get("normalize_reward", EnvConfig.normalize_reward)),
         is_atari =          bool(raw_env.get("is_atari", EnvConfig.is_atari)),
+        buffer_atari_as_uint8 = bool(raw_env.get("buffer_atari_as_uint8", EnvConfig.buffer_atari_as_uint8)),
         stack_samples =     int(raw_env.get("stack_samples", EnvConfig.stack_samples)),
         extra =             _extras(raw_env, ENV_KEYS),
     )

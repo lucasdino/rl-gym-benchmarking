@@ -11,6 +11,14 @@ saved_data/saved_plots
 saved_data/saved_videos
 saved_data/plot_processing/processed_plots
 
+# Visualizing
+saved_data/plots/live_plots/histogram
+saved_data/plots/live_plots/loss
+saved_data/plots/live_plots/other
+saved_data/plots/live_plots/residual
+saved_data/plots/live_plots/val_est
+saved_data/plots/live_plots/manifest.json
+
 # venvs / setup
 .venv/
 .python-version

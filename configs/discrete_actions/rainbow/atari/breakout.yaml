@@ -20,9 +20,9 @@ algo:
   update_every_steps:   1
   use_action_for_steps_train:   1
   use_action_for_steps_eval:    1
-  buffer_size:          40000
+  buffer_size:          200000
   buffer_type:          priority_experience_replay     # {priority_experience_replay, replay_buffer}
-  warmup_buffer_size:   5000
+  warmup_buffer_size:   25000
   overwrite_target_net_grad_updates:  256   # In terms of 'number grad updates', not samples seen. Num steps would be this * num_envs * update_every_steps
   dist_rl_vmin: -10
   dist_rl_vmax: 10
@@ -31,9 +31,9 @@ algo:
 
 train:
   run_name:         breakout_rainbow
-  total_env_steps:  50000
-  log_interval:     40000
-  eval_interval:    40000
+  total_env_steps:  8000000
+  log_interval:     200000
+  eval_interval:    200000
   eval_envs:        64
   logging_method:   [console]
 
