@@ -13,7 +13,7 @@ from trainer.helper.plot_server import LIVE_PLOTS_DIR, CFG_GREEN, COLOR_RESET
 # ========================================
 # Update the following
 # ========================================
-START_PLOT_SERVER =         False        # If True, launches live plotting of the run
+START_PLOT_SERVER =         True        # If True, launches live plotting of the run
 PLOT_SERVER_GRACE_SECONDS = 3           # Leave as is
 
 # Can either point to a folder with .yamls or to specific .yaml files
@@ -21,8 +21,8 @@ configs = [
     # "configs/template.yaml",       # Simple test!
 
 
-    "configs/template_video.yaml",
-    # "configs/discrete_actions/rainbow/atari/breakout.yaml",
+    # "configs/template_video.yaml",
+    "configs/discrete_actions/rainbow/atari/breakout.yaml",
 ]
 # ========================================
 

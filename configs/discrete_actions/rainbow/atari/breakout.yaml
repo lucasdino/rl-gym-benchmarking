@@ -1,7 +1,8 @@
+# Using hyperparams from rainbow: (pg. 4 of https://arxiv.org/pdf/1710.02298)
 env:
   name:                 breakout
   num_envs:             32
-  max_episode_steps:    1800    # @ 30 fps
+  max_episode_steps:    5400    # @ 30 fps
   normalize_obs:        False
   normalize_reward:     False
   is_atari:             True
@@ -12,28 +13,30 @@ algo:
   name:                 distributional_ddqn
   # seed:                 42       # Comment out if you want random seeding        
   gamma:                0.99
-  lr_start:             2.5e-4   # Standard is 2.5e-4  
-  lr_end:               2.5e-4
+  lr_start:             6.25e-5  
+  lr_end:               6.25e-5
   lr_warmup_env_steps:  100000
   batch_size:           32       
-  n_step:               8      # n-step TD estimates
+  n_step:               3      # n-step TD estimates
   update_every_steps:   1
   use_action_for_steps_train:   1
   use_action_for_steps_eval:    1
   buffer_size:          200000
   buffer_type:          priority_experience_replay     # {priority_experience_replay, replay_buffer}
-  warmup_buffer_size:   25000
-  overwrite_target_net_grad_updates:  256   # In terms of 'number grad updates', not samples seen. Num steps would be this * num_envs * update_every_steps
+  warmup_buffer_size:   80000
+  overwrite_target_net_grad_updates:  1000   # In terms of 'number grad updates', not samples seen. Num steps would be this * num_envs * update_every_steps
   dist_rl_vmin: -10
   dist_rl_vmax: 10
   dist_num_atoms: 51
+  per_alpha: 0.5
+  per_beta_start: 0.4
 
 
 train:
   run_name:         breakout_rainbow
-  total_env_steps:  8000000
-  log_interval:     200000
-  eval_interval:    200000
+  total_env_steps:  1000000
+  log_interval:     100000
+  eval_interval:    100000
   eval_envs:        64
   logging_method:   [console]
 
@@ -48,8 +51,11 @@ train:
 
 
 sampler:
-  name: boltzmann
-  temperature: 1.0
+  name: epsilon_greedy
+  starting_epsilon: 1.0
+  ending_epsilon: 0.05
+  warmup_steps: 0
+  decay_until_step: 500000
 
 
 networks:
