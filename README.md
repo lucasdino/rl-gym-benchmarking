@@ -2,7 +2,7 @@
   <img src="web_assets/rl_benchmarking_banner.png" alt="RL Benchmarking Banner" width="1000" />
 </p>
 
-# RL Benchmarking Gym Bench
+# RL Gym Benchmarking
 *Goal: Build a hackable RL engine from scratch then implement a ton of RL algorithms to bridge theoretical understanding to empirical performance.*
 
 Ok, so you've read Sutton & Barto. *Cool*. But what is SOTA for Q-Learning? Policy Gradient methods? What about TD-MPC?
