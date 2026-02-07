@@ -1,5 +1,9 @@
-# RL Benchmarking on Gymnasium Tasks
-*Goal: Implement a ton of RL algorithms from scratch to bridge from theoretical understanding to empirical performance.*
+<p align="center">
+  <img src="web_assets/rl_benchmarking_banner.png" alt="RL Benchmarking Banner" width="1000" />
+</p>
+
+# RL Benchmarking Gym Bench
+*Goal: Build a hackable RL engine from scratch then implement a ton of RL algorithms to bridge theoretical understanding to empirical performance.*
 
 Ok, so you've read Sutton & Barto. *Cool*. But what is SOTA for Q-Learning? Policy Gradient methods? What about TD-MPC?
 
@@ -7,7 +11,7 @@ Ok, so you've read Sutton & Barto. *Cool*. But what is SOTA for Q-Learning? Poli
   <img src="web_assets/breakout_rainbow.gif" alt="Breakout Rainbow" width="500" />
 </p>
 
-This is a super hackable RL environment for implementing RL algorithms on [Gymnasium environments](https://gymnasium.farama.org/index.html). Vibe coding is targeted, results are heavily reviewed and ablated. Could there be bugs? Absolutely. But I'm working to keep this clean so others can easily build on top of it.
+This is a super hackable RL environment for implementing RL algorithms on [Gymnasium environments](https://gymnasium.farama.org/index.html). It was designed to allow you to easily implement new algorithms and reuse modular components (e.g., sampling, buffers, neural architecures, visualization, various QoL). It was built to be fairly clean so anyone can start building on top of it.
 
 🪲 *If you squash bugs I'll send you a kind message and accept your PR* 🪲
 
