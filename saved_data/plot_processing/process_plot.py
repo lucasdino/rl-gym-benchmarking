@@ -12,10 +12,10 @@ from process_helpers import PlotSpec, plot_aggregates
 # =======================================
 SUBFOLDERS = [
     "lunarlander_distrl",
-    "lunarlander_distrl_boltzman",
+    "lunarlander_distrl_boltzmann",
 ]
 
-AGGREGATION_NAME = "rainbow_lunarlander_boltzman_ablation"
+AGGREGATION_NAME = "rainbow_lunarlander_boltzmann_ablation"
 
 # SUBFOLDERS = [
 #     "cartpole_ddqn_noisynetablation_epsilongreedy",

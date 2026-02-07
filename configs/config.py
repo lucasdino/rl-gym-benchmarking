@@ -59,7 +59,7 @@ class SamplerConfig:
     extra:              Dict[str, Any]
 # For SamplerConfig, here are two common setups:
 #   name: 'epsilon_greedy'; starting_epsilon: 1.0; ending_epsilon: 0.1; warmup_steps: 0; decay_until_step: 150000
-#   name: 'boltzman'; temperature: 1.0   (this is 'softmax sampling' for you LLM folks)
+#   name: 'boltzmann'; temperature: 1.0   (this is 'softmax sampling' for you LLM folks)
 
 @dataclass
 class SingleNetworkConfig:

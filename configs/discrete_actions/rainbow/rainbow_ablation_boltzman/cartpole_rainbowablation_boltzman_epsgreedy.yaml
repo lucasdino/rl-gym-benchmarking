@@ -30,7 +30,7 @@ algo:
 
 
 train:
-  run_name:         cartpole_rainbowablation_boltzman_epsgreedy
+  run_name:         cartpole_rainbowablation_boltzmann_epsgreedy
   total_env_steps:  200000
   log_interval:     20000
   eval_interval:    20000

@@ -48,7 +48,7 @@ train:
 
 
 sampler:
-  name: boltzman
+  name: boltzmann
   temperature: 1.0
 
 

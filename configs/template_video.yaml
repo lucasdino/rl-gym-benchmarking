@@ -45,11 +45,13 @@ train:
 
 
 sampler:
-  name: epsilon_greedy
-  starting_epsilon: 1.0
-  ending_epsilon: 0.1
-  warmup_steps: 0
-  decay_until_step: 150000
+  name: boltzmann
+  temperature: 1.0
+  # name: epsilon_greedy
+  # starting_epsilon: 1.0
+  # ending_epsilon: 0.1
+  # warmup_steps: 0
+  # decay_until_step: 150000
 
 
 networks:

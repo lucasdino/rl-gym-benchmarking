@@ -30,7 +30,7 @@ algo:
 
 
 train:
-  run_name:         lunarlander_distrl_boltzman
+  run_name:         lunarlander_distrl_boltzmann
   total_env_steps:  1000000
   log_interval:     100000
   eval_interval:    100000
@@ -48,7 +48,7 @@ train:
 
 
 sampler:
-  name: boltzman
+  name: boltzmann
   temperature: 1
 
 

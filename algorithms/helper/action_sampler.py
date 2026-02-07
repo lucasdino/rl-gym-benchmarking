@@ -16,8 +16,8 @@ class ActionSampler():
         elif self.args.name == "epsilon_greedy":
             self.sampler = self._epsilon_greedy_sampler
             self.epsilon_scheduler = self._epsilon_scheduler
-        elif self.args.name == "boltzman":
-            self.sampler = self._boltzman_sampler
+        elif self.args.name == "boltzmann":
+            self.sampler = self._boltzmann_sampler
     
     def sample(self, batched_action_output: BatchedActionOutput, accumulate_sample_nums = True) -> BatchedActionOutput:
         if accumulate_sample_nums:
@@ -51,7 +51,7 @@ class ActionSampler():
         batched_action_output.action = action
         return batched_action_output
 
-    def _boltzman_sampler(self, batched_action_output: BatchedActionOutput) -> BatchedActionOutput:
+    def _boltzmann_sampler(self, batched_action_output: BatchedActionOutput) -> BatchedActionOutput:
         logits = batched_action_output.info['action_values']         # B x A
         temperature = float(self.args.extra["temperature"])
         probs = torch.softmax(logits / temperature, dim=1)

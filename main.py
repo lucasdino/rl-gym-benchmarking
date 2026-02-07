@@ -21,8 +21,8 @@ configs = [
     # "configs/template.yaml",       # Simple test!
 
 
-    # "configs/template_video.yaml",
-    "configs/discrete_actions/rainbow/atari/breakout.yaml",
+    "configs/template_video.yaml",
+    # "configs/discrete_actions/rainbow/atari/breakout.yaml",
 ]
 # ========================================
 
