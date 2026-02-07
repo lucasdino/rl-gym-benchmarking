@@ -7,10 +7,10 @@
 
 Ok, so you've read Sutton & Barto. *Cool*. But what is SOTA for Q-Learning? Policy Gradient methods? What about TD-MPC?
 
-<figure align="center">
+<p align="center">
   <img src="web_assets/breakout_rainbow.gif" alt="Breakout Rainbow" width="500" />
-  <figcaption><i>Rainbow DQN on Breakout.</i></figcaption>
-</figure>
+</p>
+<p align="center"><i>Rainbow DQN on Breakout.</i></p>
 
 This is a super hackable RL environment for implementing RL algorithms on [Gymnasium environments](https://gymnasium.farama.org/index.html). It was designed to allow you to easily implement new algorithms and reuse modular components (e.g., sampling, buffers, neural architectures, visualization, various QoL). It was built to be fairly clean so anyone can start building on top of it.
 
@@ -28,10 +28,10 @@ This is a super hackable RL environment for implementing RL algorithms on [Gymna
 - ➖ TD-MPC, TD-MPC2 (MuJoCo)
 - ➖ DreamerV3 (haven't considered how I want to implement, but on a simple environment could train a transition model vs. a full video-action model)
 
-<figure align="center">
+<p align="center">
   <img src="web_assets/lunarlander_duelingnets.gif" alt="Breakout Rainbow" width="600" />
-  <figcaption><i>Dueling Nets + DDQN on Lunar Lander. Each frame is grayed out upon episode termination.</i></figcaption>
-</figure>
+</p>
+<p align="center"><i>Dueling Nets + DDQN on Lunar Lander. Each frame is grayed out upon episode termination.</i></p>
 
 # Minimal Setup / Training
 1) Install uv: https://docs.astral.sh/uv/
