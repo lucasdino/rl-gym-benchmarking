@@ -74,5 +74,6 @@ networks:
 
 inference:
   inference_only: False
+  single_grid: False
   # algo_path: None
   # override_cfg: False

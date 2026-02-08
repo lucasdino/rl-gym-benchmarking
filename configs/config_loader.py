@@ -117,14 +117,16 @@ def load_yaml_config(path: str) -> TrainConfig:
 
     # --- Inference ---
     raw_inference: Dict[str, Any] = raw.get("inference", {})
+    inference_only = bool(raw_inference.get("inference_only", raw_inference.get("eval_only", False)))
     inference_cfg = InferenceConfig(
-        inference_only =    bool(raw_inference.get("inference_only", False)),
+        inference_only =    inference_only,
         algo_path =         (
             None
             if raw_inference.get("algo_path") is None
             else str(raw_inference.get("algo_path"))
         ),
         override_cfg =      bool(raw_inference.get("override_cfg", False)),
+        single_grid =       bool(raw_inference.get("single_grid", False)),
     )
 
     # ====================================

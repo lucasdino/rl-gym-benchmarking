@@ -79,6 +79,7 @@ class InferenceConfig:
     inference_only:     bool = False            # If true, only do eval
     algo_path:          str | None = None
     override_cfg:       bool = False            # If true, after loading your algo you then override the original config
+    single_grid:        bool = False            # If true, record a 1x1 grid in eval-only mode
 
 
 # Config that encompasses all our configs used

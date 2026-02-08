@@ -16,6 +16,21 @@ This is a super hackable RL environment for implementing RL algorithms on [Gymna
 
 🪲 *If you squash bugs I'll send you a kind message and accept your PR* 🪲
 
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="web_assets/breakout_rainbow_1x1.gif" alt="Breakout Rainbow 1x1" width="420" />
+      <br />
+      <i>Final policy trained using Rainbow DQN on Breakout for 10M steps. Original speed.</i>
+    </td>
+    <td align="center">
+      <img src="web_assets/breakout_rainbow_eval.png" alt="Breakout Rainbow Eval" width="420" />
+      <br />
+      <i>Training score for Rainbow DQN on Breakout over 10M steps.</i>
+    </td>
+  </tr>
+</table>
+
 ### Currently Completed
 - ✅ Standard Gymnasium Envs + Atari Envs. All vectorized and supports deterministic seeding
 - ✅ DQN -> Rainbow (DDQN, Prioritized Experience Replay, Dueling Nets, Noisy Nets, N-Step TD, Distributional RL)

@@ -99,6 +99,12 @@ def tile_grid(imgs: List[np.ndarray], grid_hw: Tuple[int, int], pad: int = 2) ->
     return np.concatenate(rows_out, axis=0)
 
 
+def _scale_nearest(img: np.ndarray, scale: int) -> np.ndarray:
+    if scale <= 1:
+        return img
+    return np.repeat(np.repeat(img, scale, axis=0), scale, axis=1)
+
+
 def _unwrap_vec_for_render(envs: Any) -> Any:
     """
     return
@@ -175,7 +181,10 @@ def record_vec_grid_video(
                     frozen[i] = f.copy()
                 tiled_inputs.append(f if f is not None else (frozen[i] if frozen[i] is not None else np.zeros((64, 64, 3), dtype=np.uint8)))
 
-        frames.append(tile_grid(tiled_inputs, grid_hw=grid_hw, pad=pad))
+        frame = tile_grid(tiled_inputs, grid_hw=grid_hw, pad=pad)
+        if grid_hw == (1, 1):
+            frame = _scale_nearest(frame, scale=4)
+        frames.append(frame)
 
         policy_obs = _rgb_to_grayscale(obs) if is_atari else obs
         env_actions = actions_to_env(algo.act(to_tensor_obs(policy_obs), eval_mode=True).action)

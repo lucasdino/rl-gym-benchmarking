@@ -148,12 +148,13 @@ class Trainer():
 
         # Optional: record ONE tiled grid video (one episode per env tile)
         if save_video:
+            grid_hw = (1, 1) if (self.cfg.inference.inference_only and self.cfg.inference.single_grid) else (4, 4)
             grid_frames = record_vec_grid_video(
                 env_cfg=self.cfg.env,
                 algo=self.algo,
                 to_tensor_obs=self._to_tensor_obs,
                 actions_to_env=self._actions_to_env,
-                grid_hw=(4, 4),
+                grid_hw=grid_hw,
                 seed=self.cfg.algo.seed + 10_000,
                 pad=2,
                 vectorization_mode="sync",
