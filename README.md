@@ -10,7 +10,7 @@ Ok, so you've read Sutton & Barto. *Cool*. But what is SOTA for Q-Learning? Poli
 <p align="center">
   <img src="web_assets/breakout_rainbow.gif" alt="Breakout Rainbow" width="500" />
 </p>
-<p align="center"><i>Rainbow DQN on Breakout.</i></p>
+<p align="center"><i>Rainbow DQN on Breakout. Original speed. Frames are grayed out upon all lives being depleted.</i></p>
 
 This is a super hackable RL environment for implementing RL algorithms on [Gymnasium environments](https://gymnasium.farama.org/index.html). It was designed to allow you to easily implement new algorithms and reuse modular components (e.g., sampling, buffers, neural architectures, visualization, various QoL). It was built to be fairly clean so anyone can start building on top of it.
 

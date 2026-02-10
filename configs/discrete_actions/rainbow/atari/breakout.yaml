@@ -7,6 +7,7 @@ env:
   normalize_reward:     False
   is_atari:             True
   stack_samples:        4
+  repeat_action_probability: 0.1
 
 
 algo:
@@ -45,9 +46,9 @@ train:
   # threshold_exit_training_on_eval_score: 500
   # wandb_project: Recommend set this in config.py
   wandb_group:          breakout_distrl
-  save_result:          True
+  save_result:          False
   save_video_at_end:    True
-  save_algo_at_end:     True
+  save_algo_at_end:     False
 
 
 sampler:
@@ -99,7 +100,7 @@ networks:
 
 
 inference:
-  inference_only: False
+  inference_only: True
   algo_path: saved_data\saved_algos\rainbow\best_breakout\breakout_rainbow_20260208_070454.pkl
   override_cfg: False
   single_grid: False

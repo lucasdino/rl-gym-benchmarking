@@ -28,6 +28,7 @@ def make_atari_vec_envs(
     seed: int | None = None,
     render_mode: str | None = None,
     vectorization_mode: str = "async",
+    repeat_action_probability: float = 0.1,
 ) -> AtariVectorEnv:
     """
     Create vectorized Atari environments using ale_py's AtariVectorEnv.
@@ -48,6 +49,7 @@ def make_atari_vec_envs(
         use_fire_reset=True,
         episodic_life=False,
         full_action_space=False,
+        repeat_action_probability=repeat_action_probability,  # Avoid duplicate outcomes in parallel rollouts
     )
 
     if max_episode_steps is not None:
@@ -151,6 +153,7 @@ def make_vec_envs(
             seed=seed,
             render_mode=render_mode,
             vectorization_mode=vectorization_mode,
+            repeat_action_probability=env_cfg.extra.get("repeat_action_probability", 0.1),
         )
     else:
         envs = make_standard_vec_envs(

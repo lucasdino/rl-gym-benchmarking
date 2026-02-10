@@ -119,6 +119,7 @@ ENV_KEYS = {
     "buffer_atari_as_uint8",
     "stack_samples",
 }
+DEFAULT_REPEAT_ACTION_PROBABILITY = 0.1
 ALGO_KEYS = {
     "name",
     "seed",

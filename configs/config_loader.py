@@ -11,6 +11,7 @@ from configs.config import (
     InferenceConfig,
     SingleNetworkConfig,
     NetworksConfig,
+    DEFAULT_REPEAT_ACTION_PROBABILITY,
 )
 
 
@@ -25,6 +26,10 @@ def load_yaml_config(path: str) -> TrainConfig:
 
     # --- Env ---
     raw_env: Dict[str, Any] = raw["env"]
+    env_extra = _extras(raw_env, ENV_KEYS)
+    env_extra["repeat_action_probability"] = float(
+        raw_env.get("repeat_action_probability", DEFAULT_REPEAT_ACTION_PROBABILITY)
+    )
     env_cfg = EnvConfig(
         name =              str(raw_env["name"]),
         num_envs =          int(raw_env["num_envs"]),
@@ -38,7 +43,7 @@ def load_yaml_config(path: str) -> TrainConfig:
         is_atari =          bool(raw_env.get("is_atari", EnvConfig.is_atari)),
         buffer_atari_as_uint8 = bool(raw_env.get("buffer_atari_as_uint8", EnvConfig.buffer_atari_as_uint8)),
         stack_samples =     int(raw_env.get("stack_samples", EnvConfig.stack_samples)),
-        extra =             _extras(raw_env, ENV_KEYS),
+        extra =             env_extra,
     )
 
     # --- Algo ---
