@@ -155,7 +155,7 @@ class Trainer():
                 to_tensor_obs=self._to_tensor_obs,
                 actions_to_env=self._actions_to_env,
                 grid_hw=grid_hw,
-                seed=self.cfg.algo.seed + 10_000,
+                seed=self.current_seed + 10_000,
                 pad=2,
                 vectorization_mode="sync",
             )

@@ -78,7 +78,7 @@ class CNN(nn.Module):
 
     def _init_params(self):
         """ Common RL init: orthogonal + ReLU gain, small uniform last layer. """
-        linear_layers = [m for m in self.net.modules() if isinstance(m, nn.Linear)]
+        linear_layers = [m for m in self.head.modules() if isinstance(m, nn.Linear)]
         last = linear_layers[-1]
         for m in linear_layers:
             if m is last:

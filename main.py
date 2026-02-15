@@ -18,11 +18,11 @@ PLOT_SERVER_GRACE_SECONDS = 3           # Leave as is
 
 # Can either point to a folder with .yamls or to specific .yaml files
 configs = [
-    # "configs/template.yaml",       # Simple test!
+    "configs/discrete_actions/rainbow/lunarlander.yaml",       # Simple test!
 
 
     # "configs/template_video.yaml",
-    "configs/discrete_actions/rainbow/atari/breakout.yaml",
+    # "configs/discrete_actions/rainbow/atari/breakout.yaml",
 ]
 # ========================================
 

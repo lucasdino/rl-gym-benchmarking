@@ -59,7 +59,11 @@ class ReplayBuffer(BaseBuffer):
                 return rid
 
     def _flush_rollout(self, env_idx: int) -> BatchedTransition:
-        """ Caching env steps for the entire rollout (flush upon termination) to allow for n-step native sampling. """
+        """ 
+        Caching env steps for the entire rollout (flush upon termination) to allow for n-step native sampling. 
+        
+        This is an active choice rather than adding to our replay buffer immediately, which would allow us to train on current rollouts. This is fine -- the rollout flushing will be acceptable for now.
+        """
         cache = self._rollout_cache.pop(env_idx)
         n = len(cache)
         rollout_id = self._new_rollout_id()
